@@ -1,0 +1,158 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para el desglose de tributos */
+    .tribute-row {
+        transition: all 0.2s;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+    .tribute-row:hover {
+        background: rgba(19, 112, 182, 0.02);
+    }
+
+    .doc-info-box {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--glass-border);
+    }
+
+    /* Estilo para el selector de banco */
+    .bank-select-container {
+        background: rgba(19, 112, 182, 0.05);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(19, 112, 182, 0.1);
+    }
+
+    .table-clean thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid rgba(0,0,0,0.03);
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 900px; margin: 0 auto;">
+    
+    <!-- Encabezado con Badge de Tipo -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">Confirmar Registro SUNAT</h3>
+            <p class="text-muted small mb-0">Valide los códigos de tributo detectados en el documento</p>
+        </div>
+        <div class="badge bg-white text-primary border px-3 py-2 rounded-pill fw-bold shadow-sm">
+            <i class="fa-solid fa-file-invoice-dollar me-2"></i> {{ datos.tipo }}
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'guardar_documento_sunat' %}">
+        {% csrf_token %}
+        
+        <div class="glass-card p-4 shadow-sm mb-4">
+            
+            <!-- ALERTAS DE SEGURIDAD -->
+            {% if ya_existe %}
+            <div class="alert alert-danger bg-opacity-10 border-0 text-danger rounded-4 d-flex align-items-center p-3 mb-4">
+                <i class="fa-solid fa-ban fs-3 me-3"></i>
+                <div>
+                    <h6 class="fw-bold mb-0">DOCUMENTO DUPLICADO</h6>
+                    <small>Este Número de Orden/Operación ya existe. Se ha bloqueado el registro para evitar errores contables.</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row g-4 mb-4">
+                <!-- Detalles Detectados -->
+                <div class="col-md-6">
+                    <div class="doc-info-box h-100">
+                        <h6 class="stat-label mb-3">Información Extraída</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Período Fiscal:</span>
+                            <span class="fw-bold text-dark">{{ datos.periodo }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small">Nro. Orden/Op:</span>
+                            <span class="fw-bold text-dark">{{ datos.nro_orden }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small">Categoría:</span>
+                            <span class="badge bg-light text-muted border fw-normal">{{ datos.tipo }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selección de Banco (Si es pago) -->
+                <div class="col-md-6">
+                    {% if datos.tipo == 'PAGO_1662' %}
+                    <div class="bank-select-container h-100">
+                        <label class="stat-label mb-2"><i class="fa-solid fa-building-columns me-1"></i> Fuente de Pago</label>
+                        <select name="banco_id" class="form-select border-0 shadow-sm rounded-3 py-2" required>
+                            <option value="" disabled selected>Seleccione cuenta bancaria...</option>
+                            {% for b in bancos %}
+                            <option value="{{ b.id }}">{{ b.banco }} (Saldo: S/ {{ b.saldo_actual|floatformat:2 }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text mt-2 small" style="font-size: 0.7rem;">
+                            El monto total se descontará automáticamente de esta cuenta.
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="doc-info-box h-100 d-flex align-items-center justify-content-center border-dashed">
+                        <p class="text-muted small mb-0 text-center">
+                            <i class="fa-solid fa-info-circle d-block fs-4 mb-2 opacity-50"></i>
+                            Este documento es una <strong>Declaración</strong>.<br>No genera movimiento de caja inmediato.
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tabla de Tributos -->
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 70%;">Código y Concepto del Tributo</th>
+                            <th style="width: 30%;" class="text-end">Monto Declarado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in datos.tributos %}
+                        <tr class="tribute-row">
+                            <td class="py-3">
+                                <span class="badge bg-primary bg-opacity-10 text-primary me-2">{{ t.codigo }}</span>
+                                <span class="fw-medium text-dark">{{ t.nombre|default:"Tributo detectado" }}</span>
+                            </td>
+                            <td class="text-end py-3">
+                                <span class="fw-800" style="font-size: 1.1rem;">S/ {{ t.monto|floatformat:2 }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Acciones Finales -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <a href="{% url 'cargar_documento_sunat' %}" class="btn btn-light rounded-3 px-4 fw-bold text-muted">
+                <i class="fa-solid fa-arrow-left me-2"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg rounded-4 px-5 py-3 fw-800 shadow-lg" {% if ya_existe %}disabled{% endif %}>
+                {% if ya_existe %}
+                    <i class="fa-solid fa-lock me-2"></i> Bloqueado por Duplicidad
+                {% else %}
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Finalizar y Sincronizar
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilizamos la zona de carga para PDF de SUNAT */
+    .upload-box {
+        border: 2px dashed rgba(19, 112, 182, 0.2);
+        border-radius: 24px;
+        padding: 50px 30px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.3);
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .upload-box:hover {
+        border-color: var(--primary);
+        background: rgba(255, 255, 255, 0.6);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 30px rgba(19, 112, 182, 0.05);
+    }
+
+    .icon-circle {
+        width: 80px;
+        height: 80px;
+        background: rgba(19, 112, 182, 0.1);
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2rem;
+        transition: 0.3s;
+    }
+
+    .upload-box:hover .icon-circle {
+        background: var(--primary);
+        color: white;
+        transform: scale(1.1);
+    }
+
+    .file-input-field {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    /* Info Card para el texto de ayuda */
+    .info-sunat {
+        background: rgba(19, 112, 182, 0.05);
+        border-radius: 15px;
+        padding: 15px;
+        border-left: 4px solid var(--primary);
+        margin-top: 20px;
+    }
+
+    .btn-sunat {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        border-radius: 14px;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(19, 112, 182, 0.2);
+    }
+
+    .btn-sunat:hover {
+        background: #105d98;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(19, 112, 182, 0.3);
+    }
+
+    .file-selected-name {
+        display: none;
+        color: var(--primary);
+        font-weight: 600;
+        margin-top: 15px;
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 700px; margin: 0 auto;">
+    <!-- Encabezado -->
+    <div class="text-center mb-5">
+        <h3 class="fw-800 mb-2" style="color: var(--text-dark); letter-spacing: -1px;">Liquidación de Impuestos</h3>
+        <p class="text-muted">Procesamiento inteligente de Declaraciones (0621) y Pagos (1662)</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger bg-opacity-10 border-0 text-danger rounded-4 d-flex align-items-center p-3 mb-4">
+        <i class="fa-solid fa-triangle-exclamation fs-4 me-3"></i>
+        <div class="small"><strong>Error en documento:</strong> {{ error }}</div>
+    </div>
+    {% endif %}
+
+    <div class="glass-card p-4">
+        <form method="POST" enctype="multipart/form-data" id="sunatForm">
+            {% csrf_token %}
+            
+            <div class="upload-box" id="dropArea">
+                <input type="file" name="documento" class="file-input-field" id="docInput" accept=".pdf" required>
+                
+                <div class="icon-circle">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                
+                <h5 class="fw-bold">Subir archivo PDF</h5>
+                <p class="text-muted small mb-0">Haga clic o arrastre su documento SUNAT aquí</p>
+                
+                <div id="fileInfo" class="file-selected-name animate__animated animate__fadeIn">
+                    <i class="fa-solid fa-circle-check"></i> <span id="fileName">Archivo listo</span>
+                </div>
+            </div>
+
+            <div class="info-sunat">
+                <div class="d-flex gap-3 align-items-center">
+                    <i class="fa-solid fa-circle-info text-primary fs-5"></i>
+                    <p class="mb-0 small text-muted">
+                        El motor de IA detectará si es una <strong>Deuda Declarada</strong> o un <strong>Pago Efectuado</strong> de manera automática.
+                    </p>
+                </div>
+            </div>
+
+            <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-sunat">
+                    <i class="fa-solid fa-magnifying-glass-chart me-2"></i> Analizar Documento SUNAT
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer de Ayuda -->
+    <div class="text-center mt-4">
+        <p class="text-muted small">
+            <i class="fa-solid fa-lock me-1"></i> Conexión segura con estándares contables RNF-10
+        </p>
+    </div>
+</div>
+
+<script>
+    const docInput = document.getElementById('docInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const dropArea = document.getElementById('dropArea');
+
+    docInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            fileName.textContent = this.files[0].name;
+            fileInfo.style.display = 'block';
+            dropArea.style.borderColor = 'var(--primary)';
+            dropArea.style.background = 'rgba(19, 112, 182, 0.05)';
+        }
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para la tabla de categorías */
+    .table-categories thead th {
+        background: rgba(19, 112, 182, 0.03);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--glass-border);
+        padding: 15px 20px;
+    }
+
+    .table-categories tbody td {
+        padding: 15px 20px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+
+    /* Input estilo Fintech */
+    .form-fintech .form-control {
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 12px;
+        padding: 12px 15px;
+        background: rgba(255, 255, 255, 0.8);
+        transition: all 0.3s ease;
+    }
+
+    .form-fintech .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(19, 112, 182, 0.1);
+        background: white;
+    }
+
+    /* Botones de acción circulares */
+    .btn-action {
+        width: 35px;
+        height: 35px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        border: none;
+    }
+
+    .btn-action-edit { background: rgba(19, 112, 182, 0.1); color: var(--primary); }
+    .btn-action-edit:hover { background: var(--primary); color: white; }
+    
+    .btn-action-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .btn-action-delete:hover { background: #ef4444; color: white; }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado con navegación -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-tags text-primary me-2"></i> Categorías
+            </h3>
+            <p class="text-muted small mb-0">Organiza tus productos para una mejor trazabilidad</p>
+        </div>
+        <a href="{% url 'lista_productos' %}" class="btn btn-white border-0 shadow-sm rounded-3 px-3 py-2 text-muted fw-bold small">
+            <i class="fa-solid fa-arrow-left me-1"></i> Volver a Inventario
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Columna de Lista -->
+        <div class="col-md-8">
+            <div class="glass-card p-0 overflow-hidden shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-categories mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre de la Categoría</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat in categorias %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px;">
+                                            <i class="fa-solid fa-folder-tree small"></i>
+                                        </div>
+                                        <span class="fw-bold text-dark">{{ cat.nombre }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <a href="#" class="btn-action btn-action-edit me-2" title="Editar">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </a>
+                                    <a href="#" class="btn-action btn-action-delete" title="Eliminar">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center py-5">
+                                    <i class="fa-solid fa-layer-group text-muted opacity-25 fa-3x mb-3"></i>
+                                    <p class="text-muted">No hay categorías registradas aún.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna de Formulario (Nueva Categoría) -->
+        <div class="col-md-4">
+            <div class="glass-card shadow-sm border-0">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-dark bg-opacity-10 text-dark rounded-circle p-2 me-2">
+                        <i class="fa-solid fa-plus-circle"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0">Nueva Categoría</h5>
+                </div>
+                
+                <form method="POST" class="form-fintech">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="stat-label mb-2 d-block">Nombre de la Categoría</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Electrónicos, Servicios..." required>
+                        <div class="form-text mt-2 small text-muted">Use nombres descriptivos para facilitar el filtrado.</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-4 fw-bold shadow-sm">
+                        <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Categoría
+                    </button>
+                </form>
+            </div>
+
+            <!-- Card de ayuda rápida -->
+            <div class="mt-3 p-3 rounded-4 border-0 bg-white shadow-sm">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fa-solid fa-lightbulb text-warning fs-4"></i>
+                    <p class="mb-0 small text-muted">Las categorías te ayudan a ver reportes de rentabilidad por sector de negocio.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

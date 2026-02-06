@@ -1,0 +1,197 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para el panel de intercambio */
+    .exchange-container {
+        position: relative;
+        padding: 20px;
+        background: rgba(19, 112, 182, 0.03);
+        border-radius: 20px;
+        border: 1px dashed var(--glass-border);
+    }
+
+    .exchange-arrow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        z-index: 2;
+    }
+
+    .form-control-fintech, .form-select-fintech {
+        background: white;
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .form-control-fintech:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    /* Estilo para el input de monto grande */
+    .amount-input-hero {
+        font-size: 1.8rem !important;
+        font-weight: 800 !important;
+        text-align: center;
+        color: var(--primary);
+    }
+
+    .tc-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-family: 'Monaco', monospace;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 8px;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado -->
+                <div class="text-center mb-5">
+                    <div class="bg-primary-soft text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="fa-solid fa-right-left fs-3"></i>
+                    </div>
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">Cambio de Divisas</h4>
+                    <p class="text-muted small">Transferencia entre cuentas bancarias con ajuste cambiario</p>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- SENTIDO DE OPERACIÓN -->
+                    <div class="mb-4">
+                        <label class="section-label text-center">Configuración del Cambio</label>
+                        <select name="sentido" class="form-select form-select-fintech fw-bold text-primary border-primary border-opacity-25" id="id_sentido" style="background-color: var(--primary-soft);">
+                            <option value="USD_TO_PEN">💵 Dólares a Soles (USD → PEN)</option>
+                            <option value="PEN_TO_USD">🇵🇪 Soles a Dólares (PEN → USD)</option>
+                        </select>
+                    </div>
+
+                    <!-- PANEL DE CUENTAS (ORIGEN Y DESTINO) -->
+                    <div class="exchange-container mb-4">
+                        <div class="exchange-arrow d-none d-md-flex">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="small fw-bold text-muted mb-2">Cuenta Origen (Sale)</label>
+                                <select name="cuenta_origen" class="form-select form-select-fintech" required>
+                                    <option value="" disabled selected>-- Seleccionar --</option>
+                                    {% for c in cuentas %}
+                                    <option value="{{ c.id }}">🏦 {{ c.banco }} ({{ c.moneda }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold text-muted mb-2">Cuenta Destino (Entra)</label>
+                                <select name="cuenta_destino" class="form-select form-select-fintech" required>
+                                    <option value="" disabled selected>-- Seleccionar --</option>
+                                    {% for c in cuentas %}
+                                    <option value="{{ c.id }}">🏦 {{ c.banco }} ({{ c.moneda }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MONTOS Y TIPO DE CAMBIO -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="section-label" id="label_monto">Monto a entregar (Dólares)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                    <i class="fa-solid fa-money-bill-transfer text-muted"></i>
+                                </span>
+                                <input type="number" step="0.01" name="monto" class="form-control form-control-fintech border-start-0 amount-input-hero" 
+                                       placeholder="0.00" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="glass-card p-3 border-0 shadow-none mt-2" style="background: rgba(0,0,0,0.02);">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="small fw-bold text-muted mb-0">Tipo de Cambio Pactado</label>
+                                    <span class="tc-badge"><i class="fa-solid fa-chart-line me-1"></i> Market Rate</span>
+                                </div>
+                                <div class="input-group mt-2">
+                                    <span class="input-group-text bg-white fw-bold">S/</span>
+                                    <input type="number" step="0.001" name="tipo_cambio" class="form-control form-control-fintech fw-bold" 
+                                           placeholder="Ej: 3.785" required style="font-family: monospace; font-size: 1.2rem;">
+                                </div>
+                                <small class="text-muted mt-2 d-block" style="font-size: 0.65rem;">
+                                    * Este valor se usará para calcular cuánta moneda entra en la cuenta destino.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTÓN DE ACCIÓN -->
+                    <div class="pt-3">
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-4 shadow-sm fw-bold">
+                            <i class="fa-solid fa-shuffle me-2"></i> Procesar Transferencia de Divisas
+                        </button>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{% url 'dashboard' %}" class="btn btn-link text-muted text-decoration-none small fw-bold">
+                                <i class="fa-solid fa-xmark me-1"></i> Cancelar operación
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SEGURIDAD -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1 text-primary"></i>
+                <small class="fw-bold">Validado por el Módulo de Tesorería FG Network</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('id_sentido').addEventListener('change', function() {
+        let label = document.getElementById('label_monto');
+        let isPenToUsd = (this.value === 'PEN_TO_USD');
+        
+        // Cambiar etiquetas dinámicamente
+        label.innerText = isPenToUsd ? "Monto a entregar (Soles)" : "Monto a entregar (Dólares)";
+        
+        // Feedback visual en el input principal
+        let amountInput = document.querySelector('.amount-input-hero');
+        amountInput.placeholder = isPenToUsd ? "S/ 0.00" : "$ 0.00";
+    });
+</script>
+
+{% endblock %}

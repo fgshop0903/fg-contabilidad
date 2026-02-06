@@ -1,0 +1,199 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Tarjetas de Resumen de Deuda */
+    .debt-card {
+        border-radius: 20px;
+        padding: 24px;
+        transition: transform 0.3s ease;
+    }
+    .debt-card:hover { transform: translateY(-5px); }
+
+    .debt-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+
+    /* Estilo de Tabla Pro */
+    .table-modern thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid var(--glass-border);
+    }
+
+    .table-modern tbody td {
+        padding: 16px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    /* Badges de Estado Soft */
+    .badge-loan {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+    .badge-pending { background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .badge-paid { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+    .btn-action-loan {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s;
+        border: 1px solid var(--glass-border);
+        background: white;
+        text-decoration: none;
+    }
+    .btn-action-loan:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-university text-primary me-2"></i> Gestión de Préstamos
+            </h3>
+            <p class="text-muted small mb-0">Seguimiento de obligaciones bancarias y cronogramas de pago</p>
+        </div>
+        <a href="{% url 'registrar_prestamo' %}" class="btn btn-primary shadow-sm px-4">
+            <i class="fa-solid fa-plus me-1"></i> Nuevo Préstamo
+        </a>
+    </div>
+
+    <!-- Resumen de Deuda Bancaria -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="glass-card debt-card shadow-sm border-0">
+                <div class="debt-icon bg-primary-soft text-primary">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Capital Pendiente</small>
+                <h3 class="fw-800 text-dark mt-1 mb-0">S/ {{ total_capital|floatformat:2 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card debt-card shadow-sm border-0">
+                <div class="debt-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="fa-solid fa-percent"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Intereses Proyectados</small>
+                <h3 class="fw-800 text-danger mt-1 mb-0">S/ {{ total_intereses|floatformat:2 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card debt-card shadow-sm border-0 bg-primary text-white">
+                <div class="debt-icon bg-white text-primary">
+                    <i class="fa-solid fa-scale-unbalanced"></i>
+                </div>
+                <small class="opacity-75 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Deuda Total Real</small>
+                <h3 class="fw-800 mt-1 mb-0">S/ {{ deuda_total|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Préstamos -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Emisión</th>
+                        <th style="width: 18%;">Prestamista</th>
+                        <th style="width: 12%;">Vínculo</th>
+                        <th style="width: 12%;">Capital</th>
+                        <th style="width: 8%; text-align: center;">Int %</th>
+                        <th style="width: 12%;">Monto Int.</th>
+                        <th style="width: 10%;">Vencimiento</th>
+                        <th style="width: 10%; text-align: center;">Estado</th>
+                        <th style="width: 10%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in prestamos %}
+                    <tr>
+                        <td>
+                            <div class="text-dark fw-bold">{{ p.fecha_prestamo|date:"d M, Y" }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-800 text-dark">{{ p.prestamista }}</div>
+                            <small class="text-muted">ID: #{{ p.id }}</small>
+                        </td>
+                        <td>
+                            {% if p.comprobante %}
+                                <span class="badge bg-light text-primary border" style="font-family: monospace;">
+                                    <i class="fa-solid fa-link me-1"></i> {{ p.comprobante.serie }}-{{ p.comprobante.numero }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted opacity-50 small">Sin vincular</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">S/ {{ p.monto_capital|floatformat:2 }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-light text-muted border px-2">{{ p.porcentaje_interes }}%</span>
+                        </td>
+                        <td>
+                            <div class="text-danger fw-bold">S/ {{ p.monto_interes|floatformat:2 }}</div>
+                        </td>
+                        <td>
+                            <div class="small fw-bold {% if p.estado == 'Pendiente' %}text-warning{% endif %}">
+                                {{ p.fecha_vencimiento|date:"d/m/Y" }}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if p.estado == 'Pendiente' %}
+                                <span class="badge-loan badge-pending">PENDIENTE</span>
+                            {% else %}
+                                <span class="badge-loan badge-paid">PAGADO</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                {% if p.estado == 'Pendiente' %}
+                                    <a href="{% url 'configurar_cuotas_prestamo' p.id %}" class="btn-action-loan" title="Programar Cuotas">
+                                        <i class="fa-solid fa-calendar-plus text-info"></i>
+                                    </a>
+                                    <a href="{% url 'pagar_prestamo' p.id %}" class="btn btn-sm btn-success rounded-pill px-3 fw-bold" style="font-size: 0.7rem;">
+                                        PAGAR
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted small"><i class="fa-solid fa-lock me-1"></i> Cerrado</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fa-solid fa-hand-holding-dollar fa-3x text-muted opacity-25 mb-3"></i>
+                            <p class="text-muted">No hay obligaciones financieras registradas.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para el resumen tipo "Statement" bancario */
+    .loan-statement {
+        background: rgba(19, 112, 182, 0.05);
+        border-radius: 20px;
+        padding: 25px;
+        border: 1px dashed rgba(19, 112, 182, 0.2);
+        position: relative;
+    }
+
+    .loan-statement::before, .loan-statement::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: var(--bg-fintech); /* Color del fondo para simular perforación de ticket */
+        border-radius: 50%;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .loan-statement::before { left: -11px; }
+    .loan-statement::after { right: -11px; }
+
+    .total-fraction {
+        background: white;
+        border-radius: 15px;
+        padding: 15px;
+        text-align: center;
+        margin-top: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    }
+
+    .info-tag {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+
+    /* Formulario Estilizado */
+    .form-label-fintech {
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .input-fintech {
+        border-radius: 12px;
+        padding: 12px;
+        border: 1px solid rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+
+    .input-fintech:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(19, 112, 182, 0.1);
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 650px; margin: 0 auto;">
+    <!-- Encabezado -->
+    <div class="text-center mb-4">
+        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+            <i class="fa-solid fa-calendar-days fs-3"></i>
+        </div>
+        <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">Programar Cuotas</h3>
+        <p class="text-muted small">Define el plan de pagos para el financiamiento solicitado</p>
+    </div>
+
+    <div class="glass-card shadow-lg p-4">
+        <!-- Resumen del Préstamo Estilo Ticket -->
+        <div class="loan-statement mb-4">
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <div class="info-tag">Prestamista</div>
+                    <div class="fw-bold text-dark">{{ prestamo.prestamista }}</div>
+                </div>
+                <div class="col-6 mb-3 text-end">
+                    <div class="info-tag">Interés</div>
+                    <div class="fw-bold text-dark">{{ prestamo.porcentaje_interes }}% ({{ prestamo.moneda }} {{ prestamo.monto_interes|floatformat:2 }})</div>
+                </div>
+                <div class="col-12">
+                    <div class="info-tag">Capital Inicial</div>
+                    <div class="fw-bold text-dark">{{ prestamo.moneda }} {{ prestamo.monto_capital|floatformat:2 }}</div>
+                </div>
+            </div>
+            
+            <div class="total-fraction">
+                <div class="info-tag text-primary">Total a Fraccionar</div>
+                <div class="fw-800 text-primary" style="font-size: 1.5rem; letter-spacing: -1px;">
+                    {{ prestamo.moneda }} {{ prestamo.monto_capital|add:prestamo.monto_interes|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario de Configuración -->
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="form-label-fintech"><i class="fa-solid fa-layer-group me-1 text-primary"></i> Número de cuotas</label>
+                <input type="number" name="num_cuotas" class="form-control input-fintech" min="2" value="2" required placeholder="Ej: 12">
+                <div class="form-text small">¿En cuántos pagos se dividirá el total?</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label-fintech"><i class="fa-solid fa-clock text-primary me-1"></i> Frecuencia de pago</label>
+                <select name="frecuencia" class="form-select input-fintech">
+                    <option value="7">Semanal (cada 7 días)</option>
+                    <option value="15">Quincenal (cada 15 días)</option>
+                    <option value="30" selected>Mensual (cada 30 días)</option>
+                    <option value="60">Bimestral (cada 60 días)</option>
+                </select>
+            </div>
+
+            <div class="alert bg-primary bg-opacity-5 border-0 rounded-4 d-flex align-items-center p-3 mb-4">
+                <i class="fa-solid fa-circle-info text-primary fs-5 me-3"></i>
+                <p class="mb-0 small text-muted">
+                    El sistema generará fechas automáticas a partir de hoy siguiendo la frecuencia elegida.
+                </p>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-4">
+                    <a href="{% url 'lista_prestamos' %}" class="btn btn-light w-100 py-3 rounded-4 fw-bold text-muted">
+                        Cancelar
+                    </a>
+                </div>
+                <div class="col-8">
+                    <button type="submit" class="btn btn-primary w-100 py-3 rounded-4 fw-800 shadow-sm">
+                        Generar Cronograma <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

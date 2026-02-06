@@ -1,0 +1,144 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos Fintech para inputs */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    /* Contenedor de fuente de financiamiento */
+    .source-panel {
+        background: rgba(19, 112, 182, 0.03);
+        border: 1px dashed rgba(19, 112, 182, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 0.5px;
+        margin-bottom: 1rem;
+        display: block;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado -->
+                <div class="text-center mb-5">
+                    <div class="bg-primary-soft text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="fa-solid fa-file-invoice-dollar fs-3"></i>
+                    </div>
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">Registrar Gasto Operativo</h4>
+                    <p class="text-muted small">Los montos registrados afectarán los saldos de caja o bancos seleccionados.</p>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- DETALLES DEL GASTO -->
+                    <span class="section-label">Detalles del Gasto</span>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label small fw-bold">Categoría</label>
+                            <select name="categoria_id" class="form-select form-select-fintech" required>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.id }}">📁 {{ cat.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label small fw-bold">Descripción / Concepto</label>
+                            <input type="text" name="descripcion" class="form-control form-control-fintech" 
+                                   placeholder="Ej: Pago de servicios básicos mes de Mayo" required>
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-bold">Monto</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                    <i class="fa-solid fa-money-bill-wave text-muted"></i>
+                                </span>
+                                <input type="number" step="0.01" name="monto" class="form-control form-control-fintech border-start-0" 
+                                       placeholder="0.00" required style="font-weight: 700;">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-bold">Moneda</label>
+                            <select name="moneda" class="form-select form-select-fintech">
+                                <option value="PEN">Soles (S/)</option>
+                                <option value="USD">Dólares ($)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label small fw-bold">Fecha de Registro</label>
+                            <input type="date" name="fecha" class="form-control form-control-fintech" value="{{ hoy|date:'Y-m-d' }}" required>
+                        </div>
+                    </div>
+
+                    <!-- ORIGEN DEL DINERO -->
+                    <div class="source-panel mb-4">
+                        <span class="section-label mb-3"><i class="fa-solid fa-wallet me-2"></i>Fuente de Financiamiento</span>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Caja Chica (Efectivo)</label>
+                            <select name="caja_id" class="form-select form-select-fintech">
+                                <option value="">-- No usar efectivo --</option>
+                                {% for c in cajas %}
+                                <option value="{{ c.id }}">💵 {{ c.nombre }} (Disponible: {{ c.saldo_actual }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-1">
+                            <label class="form-label small text-muted">Cuenta Bancaria (Transferencia)</label>
+                            <select name="banco_id" class="form-select form-select-fintech">
+                                <option value="">-- No usar cuenta bancaria --</option>
+                                {% for b in bancos %}
+                                <option value="{{ b.id }}">🏦 {{ b.banco }} - {{ b.numero_cuenta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-text mt-2" style="font-size: 0.65rem;">
+                            <i class="fa-solid fa-circle-info me-1 text-primary"></i> Seleccione solo una fuente de salida de dinero.
+                        </div>
+                    </div>
+
+                    <!-- BOTÓN DE ACCIÓN -->
+                    <div class="pt-3">
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold">
+                            <i class="fa-solid fa-check-double me-2"></i> Procesar Gasto y Actualizar Saldos
+                        </button>
+                        <a href="{% url 'lista_gastos' %}" class="btn btn-link w-100 text-muted text-decoration-none small mt-3">
+                            Cancelar y volver
+                        </a>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

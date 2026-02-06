@@ -1,0 +1,277 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    /* Estilización de Select2 para estilo Fintech */
+    .select2-container--default .select2-selection--single {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        height: 45px !important;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s;
+    }
+    .select2-container--default .select2-selection--single:focus {
+        border-color: #10b981 !important;
+        background-color: white !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--text-dark) !important;
+        font-weight: 500;
+        padding-left: 15px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 43px !important;
+    }
+    .select2-dropdown {
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Paneles y etiquetas */
+    .section-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #10b981;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .section-label::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        transition: all 0.3s;
+    }
+    .form-control-fintech:focus {
+        background: white;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        outline: none;
+    }
+
+    /* Panel de Origen de Fondos */
+    #seccionCaja {
+        background: rgba(16, 185, 129, 0.04);
+        border: 1px dashed rgba(16, 185, 129, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 25px;
+        transition: all 0.3s ease;
+    }
+
+    .table-modern thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        padding: 15px;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado POS -->
+                <div class="d-flex align-items-center gap-3 mb-5">
+                    <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 56px; height: 56px; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;">
+                        <i class="fa-solid fa-cart-plus fs-3"></i>
+                    </div>
+                    <div>
+                        <h3 class="fw-800 text-dark mb-0" style="letter-spacing: -1.5px;">Venta Manual / Interna</h3>
+                        <p class="text-muted small mb-0">Emisión de ticket interno y descarga de stock inmediata</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <!-- 1. DATOS DEL CLIENTE -->
+                    <div class="section-label">1. Información del Cliente y Documento</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">DNI / RUC</label>
+                            <input type="text" name="ruc_dni" class="form-control form-control-fintech" placeholder="Documento" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted">Nombre o Razón Social</label>
+                            <input type="text" name="razon_social" class="form-control form-control-fintech" placeholder="Nombre del cliente" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Nro Ticket / Referencia</label>
+                            <input type="text" name="serie_numero" class="form-control form-control-fintech" placeholder="Ej: TK-0001" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Moneda</label>
+                            <select name="moneda" class="form-select form-control-fintech">
+                                <option value="PEN">🇵🇪 Soles (PEN)</option>
+                                <option value="USD">💵 Dólares (USD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Fecha de Venta</label>
+                            <input type="date" name="fecha" class="form-control form-control-fintech" value="{{ hoy|date:'Y-m-d' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Condición de Pago</label>
+                            <select name="forma_pago" class="form-select form-control-fintech fw-bold text-success" id="formaPago" onchange="toggleCaja(this.value)">
+                                <option value="contado">🟢 Al Contado (Inmediato)</option>
+                                <option value="credito">🟡 A Crédito (Cuotas)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 2. TESORERÍA -->
+                    <div id="seccionCaja">
+                        <label class="small fw-800 text-success text-uppercase mb-3 d-block">
+                            <i class="fa-solid fa-vault me-2"></i>¿A dónde ingresa el dinero?
+                        </label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <select name="caja_id" class="form-select form-control-fintech">
+                                    <option value="">-- Seleccionar Caja Efectivo --</option>
+                                    {% for c in cajas %}<option value="{{ c.id }}">💵 {{ c.nombre }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <select name="banco_id" class="form-select form-control-fintech">
+                                    <option value="">-- Seleccionar Cuenta Bancaria --</option>
+                                    {% for b in bancos %}<option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }})</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. DETALLE DE PRODUCTOS -->
+                    <div class="section-label mt-5">2. Detalle de Ítems</div>
+                    <div class="table-responsive">
+                        <table class="table table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="width: 55%;">Producto</th>
+                                    <th style="width: 15%; text-align: center;">Cantidad</th>
+                                    <th style="width: 20%; text-align: right;">Precio Unitario</th>
+                                    <th style="width: 10%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                                <tr>
+                                    <td>
+                                        <select name="prod_id[]" class="form-select select-buscador" required>
+                                            <option value="">-- Buscar por SKU o Nombre --</option>
+                                            {% for p in productos %}
+                                            <option value="{{ p.id }}">{{ p.nombre_interno }} (Stock: {{ p.stock_actual|floatformat:2 }})</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="hidden" name="desc[]" class="desc-hidden">
+                                    </td>
+                                    <td><input type="number" step="0.01" name="cant[]" class="form-control form-control-fintech text-center" placeholder="0" required></td>
+                                    <td><input type="number" step="0.01" name="prec[]" class="form-control form-control-fintech text-end fw-bold" placeholder="0.00" required></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-light text-danger btn-sm border rounded-circle" onclick="eliminarFila(this)" style="width: 32px; height: 32px;">
+                                            <i class="fas fa-trash-can"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button type="button" class="btn btn-outline-success rounded-pill px-4 fw-bold mt-2" onclick="agregarFila()" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-plus me-2"></i> Añadir otro producto
+                    </button>
+
+                    <!-- ACCIÓN FINAL -->
+                    <div class="mt-5 pt-4 border-top text-end">
+                        <button type="submit" class="btn btn-success btn-lg px-5 py-3 rounded-3 shadow fw-bold border-0" 
+                                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            Finalizar y Generar Venta <i class="fa-solid fa-check-circle ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    function initSelect2() {
+        $('.select-buscador').select2({
+            width: '100%',
+            placeholder: "-- Escribe nombre o SKU --",
+            dropdownAutoWidth: true
+        });
+    }
+
+    $(document).ready(function() {
+        initSelect2();
+    });
+
+    function toggleCaja(val) {
+        const seccion = document.getElementById('seccionCaja');
+        if (val === 'contado') {
+            seccion.style.display = 'block';
+            setTimeout(() => seccion.style.opacity = '1', 10);
+        } else {
+            seccion.style.display = 'none';
+        }
+    }
+
+    function agregarFila() {
+        const tbody = document.getElementById('tbody');
+        
+        // Destruir Select2 de la fila origen antes de clonar para evitar bugs de IDs duplicados
+        $('.select-buscador').select2('destroy');
+
+        const filaOriginal = tbody.rows[0];
+        const nuevaFila = filaOriginal.cloneNode(true);
+        
+        // Limpiar inputs
+        nuevaFila.querySelectorAll('input').forEach(i => i.value = '');
+        
+        tbody.appendChild(nuevaFila);
+
+        // Reinicializar Select2 en todos
+        initSelect2();
+    }
+
+    function eliminarFila(btn) {
+        const tbody = document.getElementById('tbody');
+        if (tbody.rows.length > 1) {
+            btn.closest('tr').remove();
+        }
+    }
+
+    // Auto-completar descripción oculta
+    $(document).on('change', '.select-buscador', function() {
+        const text = $(this).find('option:selected').text();
+        const cleanText = text.split(' (Stock:')[0];
+        $(this).closest('td').find('.desc-hidden').val(cleanText);
+    });
+</script>
+{% endblock %}

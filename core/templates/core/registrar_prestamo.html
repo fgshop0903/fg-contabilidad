@@ -1,0 +1,182 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos Fintech para formularios de Crédito */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-label::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    /* Panel de Destino (Inyección) */
+    .injection-panel {
+        background: rgba(16, 185, 129, 0.03);
+        border: 1px dashed rgba(16, 185, 129, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+
+    .input-group-text-fintech {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+        color: var(--text-muted);
+    }
+
+    .form-control-fintech.with-icon {
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado -->
+                <div class="d-flex align-items-center gap-3 mb-5">
+                    <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-hand-holding-dollar fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-800 text-dark mb-0" style="letter-spacing: -1px;">Nuevo Préstamo / Inyección</h4>
+                        <p class="text-muted small mb-0">Registro de pasivos y capital de trabajo para la empresa</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- SECCIÓN 1: ORIGEN -->
+                    <div class="section-label">1. Origen del Financiamiento</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold text-muted">Prestamista / Entidad</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-user-tie"></i></span>
+                                <input type="text" name="prestamista" class="form-control form-control-fintech with-icon" 
+                                       placeholder="Ej: Inversiones Chilon S.A.C." required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold text-muted">Compra Vinculada (Opcional)</label>
+                            <select name="comprobante_id" class="form-select form-select-fintech">
+                                <option value="">-- Sin vinculación directa --</option>
+                                {% for c in compras %}
+                                <option value="{{ c.id }}">📄 {{ c.codigo_factura }} (S/ {{ c.total|floatformat:2 }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: CONDICIONES FINANCIERAS -->
+                    <div class="section-label">2. Condiciones del Crédito</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Monto Capital</label>
+                            <input type="number" step="0.01" name="monto_capital" class="form-control form-control-fintech py-2 fw-bold fs-5" 
+                                   placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Tasa de Interés (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" name="porcentaje_interes" class="form-control form-control-fintech" 
+                                       value="0.00" style="border-radius: 12px 0 0 12px;">
+                                <span class="input-group-text bg-light border-start-0" style="border-radius: 0 12px 12px 0; border-color: var(--glass-border);">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Moneda</label>
+                            <select name="moneda" class="form-select form-select-fintech py-2">
+                                <option value="PEN">Soles (PEN)</option>
+                                <option value="USD">Dólares (USD)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 3: DESTINO (INYECCIÓN) -->
+                    <div class="injection-panel">
+                        <label class="form-label small fw-800 text-success text-uppercase mb-3">
+                            <i class="fa-solid fa-university me-2"></i>¿Dónde se depositará el capital?
+                        </label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Caja de Efectivo</label>
+                                <select name="caja_id" class="form-select form-select-fintech">
+                                    <option value="">-- No ingresar a caja --</option>
+                                    {% for c in cajas %}<option value="{{ c.id }}">💵 {{ c.nombre }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted">Cuenta Bancaria</label>
+                                <select name="banco_id" class="form-select form-select-fintech">
+                                    <option value="">-- No ingresar a banco --</option>
+                                    {% for b in bancos %}<option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }})</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 4: FECHAS -->
+                    <div class="section-label">3. Cronograma de Control</div>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold text-muted">Fecha de Recepción</label>
+                            <input type="date" name="fecha_prestamo" class="form-control form-control-fintech" value="{{ hoy|date:'Y-m-d' }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label small fw-bold text-muted">Vencimiento (Pago Total)</label>
+                            <input type="date" name="fecha_vencimiento" class="form-control form-control-fintech" required>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 pt-4 border-top">
+                        <a href="{% url 'lista_prestamos' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Cancelar y volver
+                        </a>
+                        <button type="submit" class="btn btn-primary px-5 py-3 rounded-3 shadow-sm order-1 order-md-2 w-100 w-md-auto fw-bold">
+                            <i class="fa-solid fa-cloud-arrow-up me-2"></i> Registrar e Inyectar Capital
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

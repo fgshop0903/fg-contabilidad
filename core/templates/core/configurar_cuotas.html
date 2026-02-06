@@ -1,0 +1,136 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para el resumen del comprobante fraccionado */
+    .invoice-fraction-card {
+        background: rgba(19, 112, 182, 0.05);
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px dashed rgba(19, 112, 182, 0.2);
+        margin-bottom: 25px;
+    }
+
+    .doc-badge {
+        background: white;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-family: 'Courier New', Courier, monospace; /* Toque técnico de factura */
+        font-weight: 700;
+        color: var(--primary);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .amount-display {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-top: 15px;
+        text-align: center;
+        border: 1px solid rgba(19, 112, 182, 0.1);
+    }
+
+    /* Inputs Modernos */
+    .form-control-fintech {
+        border-radius: 12px;
+        padding: 12px 15px;
+        border: 1px solid rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(19, 112, 182, 0.1);
+    }
+
+    .btn-generate {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 15px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(19, 112, 182, 0.2);
+    }
+
+    .btn-generate:hover {
+        background: #105d98;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(19, 112, 182, 0.3);
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 600px; margin: 0 auto;">
+    <!-- Encabezado -->
+    <div class="text-center mb-4">
+        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 55px; height: 55px;">
+            <i class="fa-solid fa-calendar-plus fs-4"></i>
+        </div>
+        <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">Fraccionamiento de Pago</h3>
+        <p class="text-muted small">Configura el plan de cuotas para este crédito</p>
+    </div>
+
+    <div class="glass-card p-4 shadow-lg">
+        <!-- Resumen de la Deuda -->
+        <div class="invoice-fraction-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="stat-label d-block">Comprobante Ref.</small>
+                    <span class="doc-badge">{{ cuenta.comprobante.serie }}-{{ cuenta.comprobante.numero }}</span>
+                </div>
+                <div class="text-end">
+                    <i class="fa-solid fa-file-invoice text-muted opacity-50 fs-3"></i>
+                </div>
+            </div>
+            
+            <div class="amount-display">
+                <small class="stat-label text-primary">Deuda Total a Fraccionar</small>
+                <div class="fw-800 text-dark" style="font-size: 1.6rem; letter-spacing: -1px;">
+                    S/ {{ cuenta.monto_total|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="stat-label mb-2"><i class="fa-solid fa-list-ol me-1 text-primary"></i> Número de cuotas</label>
+                <input type="number" name="num_cuotas" class="form-control form-control-fintech" min="2" value="2" required placeholder="Ej: 3">
+                <div class="form-text small">Mínimo 2 cuotas para fraccionar.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="stat-label mb-2"><i class="fa-solid fa-repeat me-1 text-primary"></i> Frecuencia de pago</label>
+                <select name="frecuencia" class="form-select form-control-fintech">
+                    <option value="7">Semanal (cada 7 días)</option>
+                    <option value="15">Quincenal (cada 15 días)</option>
+                    <option value="30" selected>Mensual (cada 30 días)</option>
+                </select>
+            </div>
+
+            <div class="alert bg-primary bg-opacity-5 border-0 rounded-4 d-flex align-items-center p-3 mb-4">
+                <i class="fa-solid fa-circle-info text-primary fs-5 me-3"></i>
+                <p class="mb-0 small text-muted">
+                    Los montos se dividirán de forma equitativa. Podrás editar las fechas manualmente después si es necesario.
+                </p>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-generate">
+                    Generar Plan de Pagos <i class="fa-solid fa-chevron-right ms-2 small"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="javascript:history.back()" class="text-decoration-none text-muted small fw-bold">
+            <i class="fa-solid fa-arrow-left me-1"></i> Regresar sin cambios
+        </a>
+    </div>
+</div>
+
+{% endblock %}

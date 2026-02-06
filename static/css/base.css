@@ -1,0 +1,78 @@
+/* static/css/base.css */
+
+:root {
+    /* Color principal de tu empresa */
+    --primary-color: #1370b6; 
+    --primary-hover: #105d98;
+    
+    /* Paleta Glassmorphism Light */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(19, 112, 182, 0.1); /* Sombra con un toque de tu azul */
+    --blur: 12px;
+    
+    /* Colores de fondo y texto */
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4ebf5 100%);
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+}
+
+body {
+    background: var(--bg-gradient);
+    background-attachment: fixed; /* Crucial para que el blur se vea bien al hacer scroll */
+    font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; /* Tipografía más "Fintech" */
+    color: var(--text-dark);
+    margin: 0;
+    min-height: 100vh;
+}
+
+
+/* NAVBAR: Estilo Cristal Flotante */
+.navbar {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 1rem 2rem;
+}
+
+/* BOTÓN PRINCIPAL: Moderno y con profundidad */
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(19, 112, 182, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(19, 112, 182, 0.4);
+}
+
+/* SIDEBAR: Glassmorphism Light Lateral */
+.sidebar {
+    background: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border-right: 1px solid var(--glass-border);
+    color: var(--text-dark) !important;
+    min-height: 100vh;
+    padding-top: 2rem;
+}
+
+/* Utility Class: Añade esto para usarlo en tus 80 archivos después */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: var(--glass-shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+}
