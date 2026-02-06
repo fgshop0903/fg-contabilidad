@@ -1800,21 +1800,36 @@ def marcar_notificaciones_leidas(request):
     Notificacion.objects.filter(empresa_id=emp_id, leida=False).update(leida=True)
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
 
+# core/views.py
 
 @login_required
 def registrar_cotizacion(request):
+    # --- PASO 4: LIMPIEZA DE SESIÓN (ESTO VA AQUÍ AL INICIO) ---
+    # Si el usuario entra por la URL de 'nueva', borramos cualquier rastro 
+    # de una edición anterior para que el formulario salga limpio.
+    if request.GET.get('limpiar'):
+        if 'temp_cotizacion' in request.session:
+            del request.session['temp_cotizacion']
+    # ----------------------------------------------------------
+
     emp_id = request.session.get('empresa_id')
     empresa = get_object_or_404(Empresa, id=emp_id)
 
-    # 1. Lógica de Correlativo (Siempre se ejecuta para sugerir el número)
-    ultima_cot = Cotizacion.objects.filter(empresa=empresa).order_by('-id').first()
-    sugerencia = "COT-0001"
-    if ultima_cot:
-        match = re.search(r'(\d+)', ultima_cot.numero)
-        if match:
-            sugerencia = f"COT-{(int(match.group(1)) + 1):04d}"
+    # 1. Recuperar datos si venimos de "Editar" (Si se borró arriba, esto será {})
+    temp_cot = request.session.get('temp_cotizacion', {})
 
-    # 2. Lógica cuando se presiona "Guardar y Preparar PDF"
+    # 2. Lógica de Correlativo (Solo si NO estamos editando)
+    if 'numero' in temp_cot:
+        sugerencia = temp_cot['numero'] # Usamos el número que ya tiene
+    else:
+        ultima_cot = Cotizacion.objects.filter(empresa=empresa).order_by('-id').first()
+        sugerencia = "COT-0001"
+        if ultima_cot:
+            match = re.search(r'(\d+)', ultima_cot.numero)
+            if match:
+                sugerencia = f"COT-{(int(match.group(1)) + 1):04d}"
+
+    # 2. Lógica cuando se presiona "Guardar y Preparar PDF" (POST)
     if request.method == 'POST':
         prod_ids = request.POST.getlist('prod_id[]')
         descs = request.POST.getlist('desc[]')
@@ -1822,10 +1837,9 @@ def registrar_cotizacion(request):
         precs = request.POST.getlist('prec[]')
 
         items_preview = []
-        total_acumulado = decimal.Decimal('0.00') # Inicializamos aquí adentro
+        total_acumulado = decimal.Decimal('0.00')
 
         for i in range(len(descs)):
-            # Convertimos valores de forma segura
             try:
                 c = decimal.Decimal(cants[i] if cants[i] else 0)
                 p = decimal.Decimal(precs[i] if precs[i] else 0)
@@ -1844,12 +1858,13 @@ def registrar_cotizacion(request):
                 'subtotal': float(sub_fila)
             })
 
-        # CÁLCULO DE IMPUESTOS (Solo si es POST)
         subtotal_fin = total_acumulado / decimal.Decimal('1.18')
         igv_fin = total_acumulado - subtotal_fin
 
-        # Guardamos todo en la sesión para el Preview
+        # Guardamos en sesión. 
+        # Si veníamos editando, mantenemos el cot_id original.
         request.session['temp_cotizacion'] = {
+            'cot_id': temp_cot.get('cot_id'), # IMPORTANTE: No perder el ID al editar
             'numero': request.POST.get('numero_cotizacion'),
             'ruc_dni': request.POST.get('ruc_dni'),
             'razon_social': request.POST.get('razon_social'),
@@ -1860,8 +1875,8 @@ def registrar_cotizacion(request):
             'tiempo': request.POST.get('tiempo_entrega'),
             'validez': request.POST.get('validez'),
             'notas': request.POST.get('notas'),
-            'subtotal': float(subtotal_fin), # Enviamos subtotal calculado
-            'igv': float(igv_fin),           # Enviamos igv calculado
+            'subtotal': float(subtotal_fin),
+            'igv': float(igv_fin),
             'total': float(total_acumulado),
             'items': items_preview
         }
@@ -1872,7 +1887,8 @@ def registrar_cotizacion(request):
     return render(request, 'core/cotizacion_form.html', {
         'sugerencia': sugerencia, 
         'mis_productos': mis_productos,
-        'hoy': datetime.date.today()
+        'hoy': datetime.date.today(),
+        'editando': 'cot_id' in temp_cot
     })
 
 def preview_antes_de_guardar(request):
@@ -1897,6 +1913,7 @@ def preview_antes_de_guardar(request):
         'total_gral': datos['total'],
         'empresa': empresa,
         'bancos': bancos,
+        'notas': datos.get('notas', '')
     }
     
     return render(request, 'core/cotizacion_preview_confirm.html', context)
@@ -1961,6 +1978,41 @@ def ver_cotizacion_guardada(request, pk):
         'subtotal': subtotal,
         'igv': igv,
     })
+
+@login_required
+def editar_cotizacion(request, pk):
+    emp_id = request.session.get('empresa_id')
+    cot = get_object_or_404(Cotizacion, id=pk, empresa_id=emp_id)
+
+    
+    # Pasamos los datos a la sesión usando los mismos nombres que el formulario POST
+    items_session = []
+    for item in cot.detalles.all():
+        items_session.append({
+            'prod_id': item.producto.id if item.producto else '',
+            'descripcion': item.descripcion_libre,
+            'cantidad': float(item.cantidad),
+            'precio': float(item.precio_unitario),
+            'subtotal': float(item.cantidad * item.precio_unitario)
+        })
+
+    request.session['temp_cotizacion'] = {
+        'cot_id': cot.id,
+        'numero': cot.numero,
+        'ruc_dni': cot.ruc_dni_cliente,
+        'razon_social': cot.nombre_cliente,
+        'direccion_cliente': cot.direccion_cliente, # Nombre corregido
+        'atencion_a': cot.atencion_a,               # Nombre corregido
+        'moneda': cot.moneda,
+        'garantia': cot.garantia,
+        'tiempo_entrega': cot.tiempo_entrega,       # Nombre corregido
+        'validez': cot.validez_dias,
+        'notas': cot.notas,
+        'total': float(cot.total),
+        'items': items_session
+    }
+
+    return redirect('registrar_cotizacion')
 
 @login_required
 def salir(request):

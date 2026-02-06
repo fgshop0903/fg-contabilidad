@@ -258,6 +258,15 @@
                 </td>
             </tr>
         </table> 
+
+        <!-- Bloque de Notas Adicionales -->
+        {% if c.notas %}
+        <div style="margin-top: 20px; padding-top: 10px; border-top: 1px dashed #eee;">
+            <div style="font-size: 10px; font-weight: bold; color: #1370b6; text-transform: uppercase; margin-bottom: 5px;">Notas Adicionales:</div>
+            <div style="font-size: 11px; color: #475569; line-height: 1.4; white-space: pre-wrap;">{{ c.notas }}</div>
+        </div>
+        {% endif %}
+        
         <!-- FOOTER FIJO AL FINAL DE LA HOJA -->
         <div style="margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
             <p style="font-size: 10px; color: #666; margin-bottom: 0;"> <!-- margin-bottom: 0 es clave -->

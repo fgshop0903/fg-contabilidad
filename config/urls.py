@@ -60,6 +60,7 @@ urlpatterns = [
     path('comercial/cotizacion/finalizar/', views.guardar_cotizacion_final, name='guardar_cotizacion_final'),
     path('comercial/cotizacion/lista/', views.lista_cotizaciones, name='lista_cotizaciones'),
     path('comercial/cotizacion/ver/<int:pk>/', views.ver_cotizacion_guardada, name='ver_cotizacion_guardada'),
+    path('comercial/cotizacion/editar/<int:pk>/', views.editar_cotizacion, name='editar_cotizacion'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -112,13 +112,13 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Número de Cotización</label>
-                            <input type="text" name="numero_cotizacion" class="form-control form-control-fintech fw-800 text-primary" value="{{ sugerencia }}" required>
+                            <input type="text" name="numero_cotizacion" class="form-control form-control-fintech fw-800 text-primary" value="{{ request.session.temp_cotizacion.numero_cotizacion|default:sugerencia }}" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Moneda</label>
                             <select name="moneda" class="form-select form-control-fintech">
-                                <option value="PEN">🇵🇪 Soles (PEN)</option>
-                                <option value="USD">💵 Dólares (USD)</option>
+                                <option value="PEN" {% if request.session.temp_cotizacion.moneda == 'PEN' %}selected{% endif %}>🇵🇪 Soles (PEN)</option>
+                                <option value="USD" {% if request.session.temp_cotizacion.moneda == 'USD' %}selected{% endif %}>💵 Dólares (USD)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -127,7 +127,7 @@
                                 <span class="input-group-text bg-transparent border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
                                     <i class="fa-solid fa-user-tag text-muted"></i>
                                 </span>
-                                <input type="text" name="atencion_a" class="form-control form-control-fintech border-start-0" placeholder="Nombre del encargado..." style="border-radius: 0 12px 12px 0;">
+                                <input type="text" name="atencion_a" class="form-control form-control-fintech border-start-0" value="{{ request.session.temp_cotizacion.atencion_a|default:'' }}" placeholder="Nombre del encargado..." style="border-radius: 0 12px 12px 0;">
                             </div>
                         </div>
                     </div>
@@ -139,13 +139,13 @@
                         </label>
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <input type="text" name="ruc_dni" class="form-control form-control-fintech" placeholder="RUC / DNI" required>
+                                <input type="text" name="ruc_dni" class="form-control form-control-fintech" placeholder="RUC / DNI" value="{{ request.session.temp_cotizacion.ruc_dni|default:'' }}" required>
                             </div>
                             <div class="col-md-4">
-                                <input type="text" name="razon_social" class="form-control form-control-fintech" placeholder="Razón Social / Nombre Completo" required>
+                                <input type="text" name="razon_social" class="form-control form-control-fintech" placeholder="Razón Social / Nombre Completo" value="{{ request.session.temp_cotizacion.razon_social|default:'' }}" required>
                             </div>
                             <div class="col-md-5">
-                                <input type="text" name="direccion_cliente" class="form-control form-control-fintech" placeholder="Dirección de envío o fiscal (Opcional)">
+                                <input type="text" name="direccion_cliente" class="form-control form-control-fintech" placeholder="Dirección de envío o fiscal (Opcional)" value="{{ request.session.temp_cotizacion.direccion_cliente|default:'' }}">
                             </div>
                         </div>
                     </div>
@@ -163,39 +163,62 @@
                                 </tr>
                             </thead>
                             <tbody id="tbody">
-                                <tr class="item-row">
-                                    <td>
-                                        <div class="mb-2">
-                                            <select name="prod_id[]" class="form-select select-prod-cot">
-                                                <option value="">-- Buscar en Catálogo (Opcional) --</option>
+                                {% if request.session.temp_cotizacion.items %}
+                                    <!-- Si hay items en la sesión (EDICIÓN), los dibujamos todos -->
+                                    {% for item in request.session.temp_cotizacion.items %}
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="prod_id[]" class="form-select select-prod-cot mb-1">
+                                                <option value="">-- Seleccionar de Inventario --</option>
                                                 {% for p in mis_productos %}
-                                                <option value="{{ p.id }}">{{ p.nombre_interno }}</option>
+                                                    <option value="{{ p.id }}" {% if p.id|slugify == item.prod_id|slugify %}selected{% endif %}>
+                                                        {{ p.nombre_interno }}
+                                                    </option>
                                                 {% endfor %}
                                             </select>
-                                        </div>
-                                        <input type="text" name="desc[]" class="form-control form-control-fintech form-control-sm" placeholder="Descripción personalizada..." required>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" name="cant[]" class="form-control form-control-fintech text-center" placeholder="0.00" required>
-                                    </td>
-                                    <td>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-transparent border-0 fw-bold opacity-50 small">Val:</span>
-                                            <input type="number" step="0.01" name="prec[]" class="form-control form-control-fintech text-end fw-bold" placeholder="0.00" required>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-link text-danger p-0" onclick="eliminarFila(this)">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                            <input type="text" name="desc[]" class="form-control form-control-sm" value="{{ item.descripcion }}" required>
+                                        </td>
+                                        <!-- Cantidad -->
+                                        <td>
+                                            <input type="number" step="0.01" name="cant[]" class="form-control" 
+                                                value="{{ item.cantidad|stringformat:'.2f' }}" required>
+                                        </td>
+
+                                        <!-- Precio -->
+                                        <td>
+                                            <input type="number" step="0.01" name="prec[]" class="form-control" 
+                                                value="{{ item.precio|stringformat:'.2f' }}" required>
+                                        </td>
+                                        <!--<td><input type="number" step="0.01" name="cant[]" class="form-control" value="{{ item.cantidad }}" required></td>
+                                        <td><input type="number" step="0.01" name="prec[]" class="form-control" value="{{ item.precio }}" required></td>-->
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-link text-danger" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Si NO hay nada (NUEVA), dibujamos una fila vacía por defecto -->
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="prod_id[]" class="form-select select-prod-cot mb-1">
+                                                <option value="">-- Seleccionar de Inventario --</option>
+                                                {% for p in mis_productos %}<option value="{{ p.id }}">{{ p.nombre_interno }}</option>{% endfor %}
+                                            </select>
+                                            <input type="text" name="desc[]" class="form-control form-control-sm" placeholder="Descripción..." required>
+                                        </td>
+                                        <td><input type="number" step="0.01" name="cant[]" class="form-control" placeholder="0.00" required></td>
+                                        <td><input type="number" step="0.01" name="prec[]" class="form-control" placeholder="0.00" required></td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-link text-danger" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                     
                     <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold mt-2" onclick="agregarFila()" style="font-size: 0.8rem;">
-                        <i class="fa-solid fa-plus-circle me-1"></i> Añadir Ítem Adicional
+                        <i class="fa-solid fa-plus-circle me-1" ></i> Añadir Ítem Adicional
                     </button>
 
                     <!-- SECCIÓN 4: CONDICIONES -->
@@ -203,19 +226,19 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Garantía</label>
-                            <input type="text" name="garantia" class="form-control form-control-fintech" value="12 meses">
+                            <input type="text" name="garantia" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.garantia|default:'12 meses' }}">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Tiempo de Entrega</label>
-                            <input type="text" name="tiempo_entrega" class="form-control form-control-fintech" value="Inmediato">
+                            <input type="text" name="tiempo_entrega" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.tiempo_entrega|default:'Inmediato' }}">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Validez de Oferta (Días)</label>
-                            <input type="number" name="validez" class="form-control form-control-fintech" value="5">
+                            <input type="number" name="validez" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.validez|default:'5' }}">
                         </div>
                         <div class="col-12 mt-3">
                             <label class="form-label small fw-bold text-muted">Notas Adicionales</label>
-                            <textarea name="notas" class="form-control form-control-fintech" rows="2" placeholder="Ej: No incluye instalación ni viáticos fuera de Lima..."></textarea>
+                            <textarea name="notas" class="form-control form-control-fintech" rows="2" placeholder="Ej: No incluye instalación ni viáticos fuera de Lima...">{{ request.session.temp_cotizacion.notas|default:'' }}</textarea>
                         </div>
                     </div>
 
