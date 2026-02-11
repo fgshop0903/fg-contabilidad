@@ -1,0 +1,97 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<style>
+    .quotation-sheet {
+        background: white !important;
+        margin: 0 auto;
+        padding: 50px !important;
+        max-width: 850px;
+        min-height: 1050px;
+        color: #1e293b !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .totals-grid {
+        display: grid; grid-template-columns: 1fr auto;
+        gap: 8px; max-width: 320px; margin-left: auto;
+    }
+    @media print {
+        .sidebar, .navbar, .d-print-none, .btn { display: none !important; }
+        .main-content, main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        .quotation-sheet { box-shadow: none !important; border: none !important; }
+    }
+</style>
+
+<div class="container py-4 d-print-none text-end">
+    <a href="{% url 'lista_comprobantes' %}" class="btn btn-light border btn-sm">Volver</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm fw-bold">
+        <i class="fas fa-file-pdf"></i> DESCARGAR PDF
+    </button>
+</div>
+
+<div class="quotation-sheet shadow-lg mb-5">
+    <!-- Cabecera -->
+    <div class="d-flex justify-content-between align-items-start mb-5">
+        <div>
+            {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px;" class="mb-3">{% endif %}
+            <h4 class="fw-bold mb-1" style="color: #1370b6;">{{ empresa.nombre|upper }}</h4>
+            <div class="small text-muted">RUC: {{ empresa.ruc }}<br>{{ empresa.direccion }}</div>
+        </div>
+        <div style="width: 220px;">
+            <div class="p-3 text-center border border-2 rounded-4" style="border-color: #28a745 !important;">
+                <h5 class="mb-1 fw-bold text-success">{{ c.tipo_documento|upper }}</h5>
+                <h3 class="mb-0 fw-bold">{{ c.serie }}-{{ c.numero }}</h3>
+            </div>
+            <div class="text-center mt-2 small">FECHA: {{ c.fecha_emision|date:"d/m/Y" }}</div>
+        </div>
+    </div>
+
+    <!-- Cliente -->
+    <div class="p-3 rounded-4 mb-4" style="background: #f8fafc; border-left: 5px solid #28a745;">
+        <small class="text-success fw-bold text-uppercase d-block mb-1">Cliente</small>
+        <h6 class="fw-bold mb-0">{{ c.entidad.nombre_razon_social|upper }}</h6>
+        <p class="mb-0 small">RUC/DNI: {{ c.entidad.numero_documento }}</p>
+    </div>
+
+    <!-- Tabla -->
+    <table class="table table-bordered border-light-subtle">
+        <thead style="background: #f1f5f9;">
+            <tr class="small text-center">
+                <th>IT.</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>P. UNIT.</th><th>TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for det in c.detalles.all %}
+            <tr class="small">
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td>{{ det.descripcion_libre|upper }}</td>
+                <td class="text-center">{{ det.cantidad|floatformat:1 }}</td>
+                <td class="text-end">{{ c.moneda }} {{ det.precio_unitario|floatformat:2 }}</td>
+                <td class="text-end fw-bold">{{ c.moneda }} {{ det.subtotal_linea|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Totales -->
+    <div class="totals-grid mt-4">
+        {% if mostrar_igv %}
+        <div class="text-end small text-muted">SUB TOTAL:</div>
+        <div class="text-end fw-bold">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</div>
+        <div class="text-end small text-muted">IGV (18%):</div>
+        <div class="text-end fw-bold">{{ c.moneda }} {{ c.igv|floatformat:2 }}</div>
+        {% endif %}
+        <div class="text-end fw-bold fs-5 text-success">TOTAL:</div>
+        <div class="text-end fw-bold fs-5 text-success">{{ c.moneda }} {{ c.total|floatformat:2 }}</div>
+    </div>
+
+    <!-- Cuentas -->
+    <div class="mt-5 pt-3 border-top small text-muted">
+        <strong>CUENTAS BANCARIAS:</strong><br>
+        {% for b in bancos %}
+            {{ b.banco }} ({{ b.moneda }}): {{ b.numero_cuenta }} | CCI: {{ b.cci|default:"-" }}<br>
+        {% endfor %}
+        <p class="mt-4 text-center italic">Este documento es un comprobante de control interno emitido por {{ empresa.nombre }}.</p>
+    </div>
+</div>
+{% endblock %}

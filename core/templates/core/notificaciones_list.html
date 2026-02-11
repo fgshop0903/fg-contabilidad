@@ -1,0 +1,138 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estenedor de notificaciones estilo App */
+    .notification-item {
+        transition: all 0.3s ease;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        border: 1px solid transparent;
+        background: transparent;
+        position: relative;
+    }
+
+    .notification-item:hover {
+        background: rgba(255, 255, 255, 0.5);
+        transform: translateX(5px);
+    }
+
+    /* Estilo para las No Leídas */
+    .notification-unread {
+        background: white !important;
+        border: 1px solid var(--glass-border) !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    }
+
+    .notification-unread::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 20%;
+        height: 60%;
+        width: 4px;
+        background: var(--primary);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .unread-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    /* Iconos por tipo */
+    .icon-box {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .bg-soft-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .bg-soft-warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    .bg-soft-primary { background: rgba(19, 112, 182, 0.1); color: var(--primary); }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado con estética Fintech -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-bell text-primary me-2"></i> Centro de Notificaciones
+            </h3>
+            <p class="text-muted small mb-0">Mantente al tanto de los cambios de precios y alertas de sistema</p>
+        </div>
+        <div>
+            <a href="{% url 'marcar_notificaciones_leidas' %}" class="btn btn-white border shadow-sm rounded-3 px-3 fw-bold small">
+                <i class="fa-solid fa-check-double text-success me-2"></i> Marcar todas como leídas
+            </a>
+        </div>
+    </div>
+
+    <!-- Lista de Notificaciones -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="glass-card p-4">
+                {% for n in notificaciones %}
+                <div class="notification-item p-3 d-flex align-items-start gap-3 {% if not n.leida %}notification-unread{% endif %}">
+                    
+                    <!-- Icono dinámico según el tipo -->
+                    <div class="icon-box {% if n.tipo == 'PRECIO' %}bg-soft-danger{% elif n.tipo == 'ALERTA' %}bg-soft-warning{% else %}bg-soft-primary{% endif %}">
+                        {% if n.tipo == 'PRECIO' %}
+                            <i class="fa-solid fa-chart-line"></i>
+                        {% elif n.tipo == 'ALERTA' %}
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-info"></i>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 fw-800 {% if not n.leida %}text-dark{% else %}text-muted{% endif %}" style="font-size: 0.95rem;">
+                                {% if not n.leida %}<span class="unread-dot"></span>{% endif %}
+                                {{ n.get_tipo_display }}
+                            </h6>
+                            <span class="text-muted" style="font-size: 0.75rem;">
+                                <i class="fa-regular fa-clock me-1"></i> {{ n.fecha|date:"d M, H:i" }}
+                            </span>
+                        </div>
+                        <p class="mb-0 {% if not n.leida %}text-dark fw-medium{% else %}text-muted{% endif %}" style="font-size: 0.88rem; line-height: 1.4;">
+                            {{ n.mensaje }}
+                        </p>
+                    </div>
+
+                    <!-- Acción rápida (Opcional: eliminar notificación) -->
+                    <div class="ms-2">
+                        <button class="btn btn-link btn-sm text-muted p-0 opacity-50 hover-opacity-100">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-5">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="fa-solid fa-bell-slash text-muted opacity-50 fs-2"></i>
+                    </div>
+                    <h5 class="text-muted fw-bold">Bandeja limpia</h5>
+                    <p class="text-muted small">No tienes notificaciones pendientes por revisar.</p>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-4 text-center">
+                <small class="text-muted">Las notificaciones se eliminan automáticamente después de 30 días.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

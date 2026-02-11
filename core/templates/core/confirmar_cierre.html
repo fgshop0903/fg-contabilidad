@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para el icono de cierre con animación sutil */
+    .lock-icon-container {
+        width: 100px;
+        height: 100px;
+        background: rgba(19, 112, 182, 0.1);
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 25px;
+        font-size: 3rem;
+        border: 2px solid rgba(19, 112, 182, 0.05);
+        transition: all 0.5s ease;
+    }
+
+    .lock-icon-container:hover {
+        transform: scale(1.05);
+        background: var(--primary);
+        color: white;
+    }
+
+    /* Alerta de advertencia estilo Fintech Soft */
+    .alert-soft-warning {
+        background: rgba(245, 158, 11, 0.08);
+        border-left: 5px solid #f59e0b;
+        color: #92400e;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: left;
+        margin: 25px 0;
+    }
+
+    .period-badge {
+        background: var(--primary);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin-top: 10px;
+    }
+
+    .btn-confirm-close {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 16px;
+        border-radius: 16px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        box-shadow: 0 10px 20px rgba(19, 112, 182, 0.2);
+    }
+
+    .btn-confirm-close:hover {
+        background: #105d98;
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(19, 112, 182, 0.3);
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 600px; margin: 0 auto;">
+    <div class="glass-card text-center p-5 shadow-lg animate__animated animate__fadeIn">
+        
+        <!-- Icono Principal -->
+        <div class="lock-icon-container">
+            <i class="fa-solid fa-calendar-check"></i>
+        </div>
+
+        <!-- Título y Periodo -->
+        <h3 class="fw-800" style="color: var(--text-dark); letter-spacing: -1px;">Cierre Mensual de Impuestos</h3>
+        <p class="text-muted mb-0">Estás por finalizar el ciclo contable del periodo:</p>
+        <div class="period-badge shadow-sm">
+            <i class="fa-solid fa-calendar-days me-2"></i> {{ periodo }}
+        </div>
+        
+        <!-- Advertencia de Seguridad -->
+        <div class="alert-soft-warning shadow-sm">
+            <div class="d-flex gap-3">
+                <i class="fa-solid fa-triangle-exclamation fs-4 mt-1"></i>
+                <div>
+                    <h6 class="fw-bold mb-1">Información importante</h6>
+                    <p class="mb-0 small" style="line-height: 1.5;">
+                        Al confirmar, el <strong>Saldo a Favor</strong> calculado se arrastrará automáticamente como saldo inicial para el mes siguiente. Asegúrese de haber cargado todas sus compras, ventas y retenciones.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario de Acción -->
+        <form method="POST">
+            {% csrf_token %}
+            <!-- Mantenemos el campo oculto con el monto -->
+            <input type="hidden" name="monto_resultado" value="{{ pago_final_sunat }}">
+            
+            <div class="d-grid gap-3">
+                <button type="submit" class="btn btn-confirm-close">
+                    <i class="fa-solid fa-lock me-2"></i> Confirmar y Arrastrar Saldo
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-link text-muted text-decoration-none fw-bold small">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Cancelar y volver al Dashboard
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer de confianza -->
+    <div class="text-center mt-4">
+        <p class="text-muted small opacity-75">
+            <i class="fa-solid fa-shield-halved me-1"></i> Acción registrada en el Log de Auditoría para cumplimiento fiscal.
+        </p>
+    </div>
+</div>
+
+{% endblock %}

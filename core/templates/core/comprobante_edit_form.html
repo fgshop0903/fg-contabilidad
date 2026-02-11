@@ -1,0 +1,126 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container dashboard-container">
+    <div class="glass-card border-0 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+                <h4 class="fw-800 m-0" style="color: var(--primary);">
+                    <i class="fa-solid fa-file-pen me-2"></i> Editar {{ c.operacion }}: {{ c.codigo_factura }}
+                </h4>
+                <small class="text-muted">Todos los cambios afectarán el stock y el balance financiero.</small>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-warning bg-opacity-10 text-dark px-3 py-2 rounded-pill fw-bold">
+                    MODO EDICIÓN TOTAL
+                </span>
+            </div>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            <!-- SECCIÓN 1: CABECERA COMPLETA -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-2">
+                    <label class="stat-label">RUC/DNI</label>
+                    <input type="text" name="ruc_dni" class="form-control" value="{{ c.entidad.numero_documento }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="stat-label">Razón Social</label>
+                    <input type="text" name="razon_social" class="form-control" value="{{ c.entidad.nombre_razon_social }}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="stat-label">Tipo Doc.</label>
+                    <select name="tipo_documento" class="form-select">
+                        <option value="Factura" {% if c.tipo_documento == 'Factura' %}selected{% endif %}>Factura</option>
+                        <option value="Boleta" {% if c.tipo_documento == 'Boleta' %}selected{% endif %}>Boleta</option>
+                        <option value="Recibo" {% if c.tipo_documento == 'Recibo' %}selected{% endif %}>Recibo / Nota</option>
+                        <option value="Otros" {% if c.tipo_documento == 'Otros' %}selected{% endif %}>Otros (AliExpress)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="stat-label">Fecha</label>
+                    <input type="date" name="fecha" class="form-control" value="{{ c.fecha_emision|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="stat-label">Moneda</label>
+                    <select name="moneda" class="form-select">
+                        <option value="PEN" {% if c.moneda == 'PEN' %}selected{% endif %}>Soles (PEN)</option>
+                        <option value="USD" {% if c.moneda == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="stat-label">Tipo Cambio</label>
+                    <input type="number" step="0.001" name="tipo_cambio" class="form-control" value="{{ c.tipo_cambio|stringformat:'.3f' }}">
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: TABLA DE PRODUCTOS -->
+            <h6 class="fw-bold mb-3"><i class="fa-solid fa-list-check me-2"></i> Detalle de Items</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm align-middle" id="tablaItems">
+                    <thead class="bg-light">
+                        <tr class="small text-muted text-uppercase">
+                            <th style="width: 50%;">Producto / Descripción</th>
+                            <th style="width: 15%;">Cantidad</th>
+                            <th style="width: 15%;">Precio Unit.</th>
+                            <th style="width: 15%;">Subtotal</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        {% for det in c.detalles.all %}
+                        <tr class="item-row">
+                            <td>
+                                <select name="prod_id[]" class="form-select form-select-sm mb-1">
+                                    <option value="">-- Sin stock (Gasto/Servicio) --</option>
+                                    {% for p in mis_productos %}
+                                    <option value="{{ p.id }}" {% if p == det.producto %}selected{% endif %}>{{ p.nombre_interno }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="desc[]" class="form-control form-control-sm" value="{{ det.descripcion_libre|default:det.producto.nombre_interno }}" required>
+                            </td>
+                            <td><input type="number" step="0.01" name="cant[]" class="form-control form-control-sm" value="{{ det.cantidad|stringformat:'.2f' }}" required></td>
+                            <td><input type="number" step="0.01" name="prec[]" class="form-control form-control-sm" value="{{ det.precio_unitario|stringformat:'.2f' }}" required></td>
+                            <td class="text-end fw-bold">
+                                <span class="small opacity-50">{{ c.moneda }}</span> {{ det.subtotal_linea|floatformat:2 }}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 mb-4" onclick="agregarFila()">
+                <i class="fas fa-plus-circle me-1"></i> Añadir otro ítem
+            </button>
+
+            <!-- SECCIÓN 3: MOTIVO Y CIERRE -->
+            <div class="p-3 rounded-4 bg-danger bg-opacity-5 border border-danger border-opacity-25 mb-4">
+                <label class="stat-label text-danger fw-bold">Motivo de la Modificación (Requerido para Auditoría)</label>
+                <textarea name="motivo_cambio" class="form-control mt-2" rows="2" required placeholder="Ej: Se corrigió el tipo de cambio y se añadió un producto faltante..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{% url 'lista_comprobantes' %}" class="btn btn-light rounded-3 px-4 text-muted">Descartar Cambios</a>
+                <button type="submit" class="btn btn-primary rounded-3 px-5 py-2 fw-bold shadow-sm">
+                    <i class="fa-solid fa-save me-2"></i> Actualizar Documento y Balances
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function agregarFila() {
+        const tbody = document.getElementById('tbody');
+        const fila = document.querySelector('.item-row').cloneNode(true);
+        // Limpiar inputs de la nueva fila
+        fila.querySelectorAll('input').forEach(i => i.value = '');
+        fila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        tbody.appendChild(fila);
+    }
+</script>
+{% endblock %}

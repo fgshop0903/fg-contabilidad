@@ -1,0 +1,165 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos Fintech para el formulario de Flete */
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-step {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-step::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    .info-box-landed {
+        background: rgba(19, 112, 182, 0.05);
+        border-radius: 16px;
+        border: 1px dashed var(--primary);
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .input-group-text-fintech {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+        color: var(--text-muted);
+    }
+
+    .form-control-fintech.with-icon {
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado con Icono -->
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-truck-ramp-box fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-800 text-dark mb-0" style="letter-spacing: -1px;">Flete y Prorrateo de Costos</h4>
+                        <p class="text-muted small mb-0">Distribución de gastos logísticos sobre el valor de mercadería (RF-12)</p>
+                    </div>
+                </div>
+
+                <!-- Caja Informativa de Landed Cost -->
+                <div class="info-box-landed d-flex align-items-start gap-3">
+                    <div class="text-primary fs-3">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-800 text-primary mb-1">Impacto en Costo Unitario (Landed Cost)</h6>
+                        <p class="small text-muted mb-0">
+                            Al procesar este registro, el sistema distribuirá el monto del flete entre todos los productos de la compra. Esto recalculará automáticamente el <strong>Costo Real de Inventario</strong> y actualizará los márgenes de utilidad.
+                        </p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- PASO 1: Vinculación -->
+                    <div class="section-step">1. Vinculación con Mercadería</div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">Seleccionar Compra Asociada</label>
+                        <select name="compra_id" class="form-select form-control-fintech" required>
+                            <option value="" selected disabled>-- Buscar factura de mercadería --</option>
+                            {% for c in compras %}
+                            <option value="{{ c.id }}">📄 {{ c.serie }}-{{ c.numero }} | {{ c.entidad.nombre_razon_social|truncatechars:30 }} (Total: S/ {{ c.total }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- PASO 2: Datos del Transportista -->
+                    <div class="section-step">2. Información del Transporte</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7 mb-3">
+                            <label class="form-label small fw-bold text-muted">Proveedor de Flete</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-truck-moving"></i></span>
+                                <select name="proveedor_flete_id" class="form-select form-control-fintech border-start-0" style="border-radius: 0 12px 12px 0;" required>
+                                    <option value="" selected disabled>-- Seleccionar transportista --</option>
+                                    {% for p in proveedores %}
+                                    <option value="{{ p.id }}">{{ p.nombre_razon_social }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label small fw-bold text-muted">Monto Total del Flete</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech" style="color: var(--primary); font-weight: 700;">S/</span>
+                                <input type="number" step="0.01" name="monto_flete" class="form-control form-control-fintech border-start-0" 
+                                       placeholder="0.00" required style="font-weight: 700; font-size: 1.1rem; border-radius: 0 12px 12px 0;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: Comprobante -->
+                    <div class="section-step">3. Documentación del Gasto</div>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Serie</label>
+                            <input type="text" name="serie" class="form-control form-control-fintech" placeholder="Ej: F001" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Número</label>
+                            <input type="text" name="numero" class="form-control form-control-fintech" placeholder="Ej: 000123" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold text-muted">Fecha de Emisión</label>
+                            <input type="date" name="fecha" class="form-control form-control-fintech" required>
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 pt-4 border-top">
+                        <a href="{% url 'dashboard' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                            <i class="fa-solid fa-xmark me-1"></i> Cancelar registro
+                        </a>
+                        <button type="submit" class="btn btn-primary px-5 py-3 rounded-3 shadow-sm order-1 order-md-2 w-100 w-md-auto fw-bold">
+                            <i class="fa-solid fa-arrows-rotate me-2"></i> Procesar y Recalcular Costos
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Fuente Inter para estilo Fintech -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6.4.2 (Versión más estable) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #1370b6;
+            --primary-soft: rgba(19, 112, 182, 0.08);
+            --glass-white: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --bg-fintech: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg-fintech);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(19, 112, 182, 0.07) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(19, 112, 182, 0.07) 0px, transparent 50%);
+            background-attachment: fixed;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-dark);
+            margin: 0;
+        }
+
+        /* SIDEBAR GLASSMORPHISM */
+        .sidebar {
+            background: var(--glass-white);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-right: 1px solid var(--glass-border);
+            height: 100vh;
+            position: fixed;
+            overflow-y: auto; /* Para que si hay muchos botones puedas bajar */
+            z-index: 1000;
+            padding-bottom: 50px;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Estilo de los Menús Colapsables */
+        .menu-header {
+            padding: 1rem 1.2rem 0.4rem;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-header:hover { color: var(--primary); }
+
+        .sidebar a {
+            color: var(--text-dark);
+            text-decoration: none;
+            padding: 0.6rem 1.2rem;
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border-radius: 8px;
+            margin: 0.1rem 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar a i {
+            width: 25px;
+            font-size: 1rem;
+            margin-right: 8px;
+            color: var(--primary); /* Iconos siempre en azul empresa */
+            opacity: 0.8;
+        }
+
+        .sidebar a:hover, .sidebar a.active {
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Navbar estilo Glass */
+        .navbar {
+            background: rgba(255, 255, 255, 0.6) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0.7rem 2rem;
+        }
+
+        .main-content {
+            margin-left: 16.666667%;
+            min-height: 100vh;
+        }
+
+        /* Rotación de flecha */
+        .menu-header i.chevron {
+            transition: transform 0.3s ease;
+            font-size: 0.7rem;
+        }
+        .menu-header[aria-expanded="true"] i.chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Estilo para las tablas y formularios (Úsalo en tus 80 archivos) */
+        .glass-card {
+            background: var(--glass-white);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            padding: 20px;
+        }
+
+        /* AJUSTES MÓVILES */
+        @media (max-width: 767.98px) {
+            .main-content {
+                margin-left: 0 !important; /* Quita el espacio del sidebar en móvil */
+            }
+            .navbar {
+                padding: 0.7rem 1rem; /* Reduce padding en móvil */
+            }
+            .offcanvas {
+                background: var(--glass-white) !important;
+                backdrop-filter: blur(15px);
+                -webkit-backdrop-filter: blur(15px);
+                border-right: 1px solid var(--glass-border);
+                width: 280px !important;
+            }
+        }
+    </style>
+    <title>FG Network - {{ request.session.empresa_nombre }}</title>
+</head>
+<body>
+
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <!-- SIDEBAR COMPLETO -->
+        <nav class="col-md-2 sidebar d-none d-md-block shadow-sm">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-building-columns"></i> FG Network
+            </div>
+
+            <!-- PRINCIPAL -->
+            <div class="menu-header">PRINCIPAL</div>
+            <a href="{% url 'dashboard' %}" class="nav-link-item">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard Analítico
+            </a>
+
+            <!-- OPERACIONES -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuOperaciones">
+                OPERACIONES <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuOperaciones">
+                <a href="{% url 'cargar_compra' %}" class="nav-link-item"><i class="fa-solid fa-file-arrow-up"></i> Cargar Compra</a>
+                <a href="{% url 'cargar_venta' %}" class="nav-link-item"><i class="fa-solid fa-cash-register"></i> Registrar Venta</a>
+                <a href="{% url 'cargar_retencion' %}" class="nav-link-item"><i class="fa-solid fa-receipt"></i> Retenciones XML</a>
+                <a href="{% url 'cargar_documento_sunat' %}" class="nav-link-item"><i class="fa-solid fa-landmark"></i> Liquidar Impuestos</a>
+                <a href="{% url 'lista_pagos_sunat' %}" class="nav-link-item"><i class="fa-solid fa-clock-history"></i> Historial SUNAT</a>
+            </div>
+
+            <!-- MANUALES -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuManuales">
+                OPERACIONES MANUALES <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuManuales">
+                <a href="{% url 'registrar_compra_manual' %}" class="nav-link-item"><i class="fa-solid fa-file-pen"></i> Compra Manual</a>
+                <a href="{% url 'registrar_venta_manual' %}" class="nav-link-item"><i class="fa-solid fa-circle-plus"></i> Venta Manual</a>
+                <a href="{% url 'registrar_devolucion' %}" class="nav-link-item"><i class="fa-solid fa-rotate-left"></i> Devoluciones</a>
+            </div>
+
+            <!-- Botón Nueva Cotización (Destacado) -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuCotizaciones">
+                COMERCIAL <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuCotizaciones">
+                <a href="{% url 'registrar_cotizacion' %}?limpiar=1" class="nav-link-item">
+                    <i class="fa-solid fa-file-signature"></i> Nueva Cotización
+                </a>
+                <a href="{% url 'lista_cotizaciones' %}" class="nav-link-item">
+                    <i class="fa-solid fa-rectangle-list"></i> Mis Cotizaciones
+                </a>
+            </div>
+
+            <!-- MANTENIMIENTO -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuMantenimiento">
+                MANTENIMIENTO <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuMantenimiento">
+                <a href="{% url 'lista_productos' %}" class="nav-link-item"><i class="fa-solid fa-boxes-stacked"></i> Inventario / Stock</a>
+                <a href="{% url 'lista_entidades' %}" class="nav-link-item"><i class="fa-solid fa-address-book"></i> Proveedores / Clientes</a>
+            </div>
+
+            <!-- FINANZAS -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuFinanzas">
+                FINANZAS <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuFinanzas">
+                <a href="{% url 'registrar_prestamo' %}" class="nav-link-item"><i class="fa-solid fa-hand-holding-dollar"></i> Préstamos</a>
+                <a href="{% url 'lista_prestamos' %}" class="nav-link-item"><i class="fa-solid fa-university"></i> Préstamos Bancarios</a>
+                <a href="{% url 'registrar_flete' %}" class="nav-link-item"><i class="fa-solid fa-truck-moving"></i> Flete / Landed Cost</a>
+                <a href="{% url 'transferir_moneda' %}" class="nav-link-item"><i class="fa-solid fa-arrow-right-arrow-left"></i> Cambio de Divisas</a>
+            </div>
+
+            <!-- FINANZAS AVANZADAS -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuFinanzasAv">
+                FINANZAS AVANZADAS <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuFinanzasAv">
+                <a href="{% url 'cronograma_vencimientos' %}" class="nav-link-item"><i class="fa-solid fa-calendar-days"></i> Próximos Vencimientos</a>
+                <a href="{% url 'lista_movimientos' %}" class="nav-link-item"><i class="fa-solid fa-vault"></i> Caja y Bancos</a>
+                <a href="{% url 'lista_gastos' %}" class="nav-link-item"><i class="fa-solid fa-file-invoice-dollar"></i> Gastos Operativos</a>
+            </div>
+
+            <!-- CONTROL -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuControl">
+                CONTROL DE SISTEMA <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuControl">
+                <a href="{% url 'lista_tipo_cambio' %}" class="nav-link-item"><i class="fa-solid fa-coins"></i> Historial Divisas</a>
+                {% if user.rol.nombre == 'Admin' %}
+                <a href="{% url 'lista_auditoria' %}" class="nav-link-item"><i class="fa-solid fa-user-shield"></i> Log de Auditoría</a>
+                {% endif %}
+            </div>
+
+            <!-- CONFIGURACIÓN -->
+            <div class="menu-header">SISTEMA</div>
+            <a href="{% url 'seleccionar_empresa' %}" class="nav-link-item"><i class="fa-solid fa-building-circle-check"></i> Cambiar Empresa</a>
+            <a href="{% url 'logout' %}" class="text-danger"><i class="fa-solid fa-right-from-bracket"></i> Salir</a>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="col-md-10 main-content">
+            <nav class="navbar d-flex justify-content-between sticky-top">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn d-md-none me-2 text-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMobile">
+                        <i class="fa-solid fa-bars fs-4"></i>
+                    </button>
+                    <div style="border-left: 3px solid var(--primary); padding-left: 15px;">
+                        <span class="text-muted small d-block" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Empresa en curso</span>
+                        <span class="fw-bold text-dark">{{ request.session.empresa_nombre }}</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-center gap-4">
+                    <!-- Notificaciones Glassmorphism -->
+                    <div class="dropdown">
+                        <a href="#" class="text-muted position-relative" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-bell fs-5"></i>
+                            {% if n_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                            {% endif %}
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end glass-card border-0 shadow-lg mt-3 p-0" style="width: 320px; overflow: hidden;">
+                            <div class="p-3 border-bottom fw-bold" style="color: var(--primary);">Notificaciones</div>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                {% for alerta in n_alertas %}
+                                <a class="dropdown-item p-3 border-bottom border-light" href="#">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="fw-bold text-primary">{{ alerta.get_tipo_display }}</small>
+                                        <small class="text-muted" style="font-size: 0.7rem;">{{ alerta.fecha|timesince }}</small>
+                                    </div>
+                                    <p class="mb-0 small text-wrap text-muted">{{ alerta.mensaje|truncatechars:80 }}</p>
+                                </a>
+                                {% empty %}
+                                <div class="p-4 text-center text-muted small">No hay notificaciones.</div>
+                                {% endfor %}
+                            </div>
+                            <div class="p-2 text-center bg-light">
+                                <a href="{% url 'lista_notificaciones' %}" class="small text-decoration-none">Ver todo</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-end border-start ps-4">
+                        <span class="text-muted small d-block" style="font-size: 0.7rem; font-weight: 700;">USUARIO</span>
+                        <span class="fw-bold" style="color: var(--primary);">{{ user.username }}</span>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- SCRIPT PARA MANTENER EL MENÚ ABIERTO AL NAVEGAR -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-link-item');
+        
+        navLinks.forEach(link => {
+            // Verificamos si la URL del link coincide con la URL actual
+            if (currentPath.includes(link.getAttribute('href')) && link.getAttribute('href') !== '/') {
+                link.classList.add('active');
+                
+                // Encontrar el collapse padre
+                const parentCollapse = link.closest('.collapse');
+                if (parentCollapse) {
+                    // Usar la API de Bootstrap para mostrarlo
+                    const bsCollapse = new bootstrap.Collapse(parentCollapse, { toggle: false });
+                    bsCollapse.show();
+                    
+                    // Resaltar el encabezado
+                    const header = document.querySelector(`[data-bs-target="#${parentCollapse.id}"]`);
+                    if (header) {
+                        header.style.color = 'var(--primary)';
+                        header.setAttribute('aria-expanded', 'true');
+                    }
+                }
+            }
+        });
+    });
+</script>
+<!-- OFFCANVAS PARA MÓVIL -->
+<div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="sidebarMobile">
+    <div class="offcanvas-header border-bottom">
+        <div class="sidebar-brand mb-0">
+            <i class="fa-solid fa-building-columns"></i> FG Network
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 sidebar" style="position: relative; width: 100%; height: auto; border: none;">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-building-columns"></i> FG Network
+            </div>
+
+            <!-- PRINCIPAL -->
+            <div class="menu-header">PRINCIPAL</div>
+            <a href="{% url 'dashboard' %}" class="nav-link-item">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard Analítico
+            </a>
+
+            <!-- OPERACIONES -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuOperaciones">
+                OPERACIONES <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuOperaciones">
+                <a href="{% url 'cargar_compra' %}" class="nav-link-item"><i class="fa-solid fa-file-arrow-up"></i> Cargar Compra</a>
+                <a href="{% url 'cargar_venta' %}" class="nav-link-item"><i class="fa-solid fa-cash-register"></i> Registrar Venta</a>
+                <a href="{% url 'cargar_retencion' %}" class="nav-link-item"><i class="fa-solid fa-receipt"></i> Retenciones XML</a>
+                <a href="{% url 'cargar_documento_sunat' %}" class="nav-link-item"><i class="fa-solid fa-landmark"></i> Liquidar Impuestos</a>
+                <a href="{% url 'lista_pagos_sunat' %}" class="nav-link-item"><i class="fa-solid fa-clock-history"></i> Historial SUNAT</a>
+            </div>
+
+            <!-- MANUALES -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuManuales">
+                OPERACIONES MANUALES <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuManuales">
+                <a href="{% url 'registrar_compra_manual' %}" class="nav-link-item"><i class="fa-solid fa-file-pen"></i> Compra Manual</a>
+                <a href="{% url 'registrar_venta_manual' %}" class="nav-link-item"><i class="fa-solid fa-circle-plus"></i> Venta Manual</a>
+                <a href="{% url 'registrar_devolucion' %}" class="nav-link-item"><i class="fa-solid fa-rotate-left"></i> Devoluciones</a>
+            </div>
+
+            <!-- Botón Nueva Cotización (Destacado) -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuCotizaciones" aria-expanded="false">
+                COMERCIAL <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuCotizaciones">
+                <a href="{% url 'registrar_cotizacion' %}?limpiar=1" class="nav-link-item">
+                    <i class="fa-solid fa-file-signature"></i> Nueva Cotización
+                </a>
+                <a href="{% url 'lista_cotizaciones' %}" class="nav-link-item">
+                    <i class="fa-solid fa-rectangle-list"></i> Mis Cotizaciones
+                </a>
+            </div>
+
+            <!-- MANTENIMIENTO -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuMantenimiento">
+                MANTENIMIENTO <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuMantenimiento">
+                <a href="{% url 'lista_productos' %}" class="nav-link-item"><i class="fa-solid fa-boxes-stacked"></i> Inventario / Stock</a>
+                <a href="{% url 'lista_entidades' %}" class="nav-link-item"><i class="fa-solid fa-address-book"></i> Proveedores / Clientes</a>
+            </div>
+
+            <!-- FINANZAS -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuFinanzas">
+                FINANZAS <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuFinanzas">
+                <a href="{% url 'registrar_prestamo' %}" class="nav-link-item"><i class="fa-solid fa-hand-holding-dollar"></i> Préstamos</a>
+                <a href="{% url 'lista_prestamos' %}" class="nav-link-item"><i class="fa-solid fa-university"></i> Préstamos Bancarios</a>
+                <a href="{% url 'registrar_flete' %}" class="nav-link-item"><i class="fa-solid fa-truck-moving"></i> Flete / Landed Cost</a>
+                <a href="{% url 'transferir_moneda' %}" class="nav-link-item"><i class="fa-solid fa-arrow-right-arrow-left"></i> Cambio de Divisas</a>
+            </div>
+
+            <!-- FINANZAS AVANZADAS -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuFinanzasAv">
+                FINANZAS AVANZADAS <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuFinanzasAv">
+                <a href="{% url 'cronograma_vencimientos' %}" class="nav-link-item"><i class="fa-solid fa-calendar-days"></i> Próximos Vencimientos</a>
+                <a href="{% url 'lista_movimientos' %}" class="nav-link-item"><i class="fa-solid fa-vault"></i> Caja y Bancos</a>
+                <a href="{% url 'lista_gastos' %}" class="nav-link-item"><i class="fa-solid fa-file-invoice-dollar"></i> Gastos Operativos</a>
+            </div>
+
+            <!-- CONTROL -->
+            <div class="menu-header" data-bs-toggle="collapse" data-bs-target="#menuControl">
+                CONTROL DE SISTEMA <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="collapse" id="menuControl">
+                <a href="{% url 'lista_tipo_cambio' %}" class="nav-link-item"><i class="fa-solid fa-coins"></i> Historial Divisas</a>
+                {% if user.rol.nombre == 'Admin' %}
+                <a href="{% url 'lista_auditoria' %}" class="nav-link-item"><i class="fa-solid fa-user-shield"></i> Log de Auditoría</a>
+                {% endif %}
+            </div>
+
+            <!-- CONFIGURACIÓN -->
+            <div class="menu-header">SISTEMA</div>
+            <a href="{% url 'seleccionar_empresa' %}" class="nav-link-item"><i class="fa-solid fa-building-circle-check"></i> Cambiar Empresa</a>
+            <a href="{% url 'logout' %}" class="text-danger"><i class="fa-solid fa-right-from-bracket"></i> Salir</a>
+    </div>
+</div>
+
+</body>
+</html>

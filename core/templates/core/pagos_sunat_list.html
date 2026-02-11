@@ -1,0 +1,177 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para las tarjetas de resumen fiscal */
+    .summary-card {
+        border-radius: 20px;
+        padding: 20px;
+        transition: transform 0.3s ease;
+    }
+    
+    .summary-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .summary-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+
+    /* Tabla Estilo Fintech */
+    .table-modern thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid var(--glass-border);
+    }
+
+    .table-modern tbody td {
+        padding: 16px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    /* Badges de Tributos */
+    .tax-badge {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+    .tax-igv { background: rgba(19, 112, 182, 0.1); color: var(--primary); border: 1px solid rgba(19, 112, 182, 0.2); }
+    .tax-renta { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+
+    .op-number {
+        font-family: 'Monaco', 'Consolas', monospace;
+        color: var(--text-muted);
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-landmark text-primary me-2"></i> Historial de Pagos SUNAT
+            </h3>
+            <p class="text-muted small mb-0">Control de Boletas 1662 y obligaciones tributarias</p>
+        </div>
+        <a href="{% url 'cargar_documento_sunat' %}" class="btn btn-primary shadow-sm px-4">
+            <i class="fa-solid fa-plus me-1"></i> Cargar Nuevo Pago
+        </a>
+    </div>
+
+    <!-- Resumen de Pagos Glass-Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="glass-card summary-card shadow-sm border-0">
+                <div class="summary-icon bg-primary-soft text-primary">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Total IGV Pagado (1011)</small>
+                <h3 class="fw-800 text-dark mt-1 mb-0">S/ {{ total_igv|floatformat:2 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card summary-card shadow-sm border-0">
+                <div class="summary-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Total Renta Pagada (3111)</small>
+                <h3 class="fw-800 text-dark mt-1 mb-0" style="color: #10b981 !important;">S/ {{ total_renta|floatformat:2 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card summary-card shadow-sm border-0 bg-primary text-white">
+                <div class="summary-icon bg-white text-primary">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <small class="opacity-75 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Carga Tributaria Total</small>
+                <h3 class="fw-800 mt-1 mb-0">S/ {{ total_general|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Pagos -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Fecha de Pago</th>
+                        <th style="width: 15%;">Periodo</th>
+                        <th style="width: 20%;">Tributo / Código</th>
+                        <th style="width: 15%;">N° Operación</th>
+                        <th style="width: 20%;">Medio de Pago</th>
+                        <th style="width: 15%; text-align: right;">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pagos %}
+                    <tr>
+                        <td>
+                            <div class="text-dark fw-bold">{{ p.fecha_pago|date:"d M, Y" }}</div>
+                            <small class="text-muted" style="font-size: 0.7rem;">Liquidado</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border px-3 rounded-pill fw-bold">{{ p.periodo }}</span>
+                        </td>
+                        <td>
+                            {% if p.tributo_codigo == '1011' %}
+                                <span class="tax-badge tax-igv"><i class="fa-solid fa-droplet me-1"></i> IGV (1011)</span>
+                            {% else %}
+                                <span class="tax-badge tax-renta"><i class="fa-solid fa-leaf me-1"></i> RENTA (3111)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="op-number">{{ p.numero_operacion }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if p.movimiento.cuenta_bancaria %}
+                                    <i class="fa-solid fa-building-columns text-primary me-2"></i>
+                                    <span class="small">{{ p.movimiento.cuenta_bancaria.banco }}</span>
+                                {% else %}
+                                    <i class="fa-solid fa-wallet text-muted me-2"></i>
+                                    <span class="small text-muted">Caja Efectivo</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-end fw-800 text-dark" style="font-size: 1rem;">
+                            S/ {{ p.monto_pagado|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="opacity-25 mb-3">
+                                <i class="fa-solid fa-file-invoice-dollar fa-4x text-muted"></i>
+                            </div>
+                            <h5 class="text-muted fw-light">No hay registros fiscales</h5>
+                            <p class="text-muted small">Los pagos de boletas 1662 aparecerán aquí.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

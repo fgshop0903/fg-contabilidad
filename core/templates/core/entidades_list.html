@@ -1,0 +1,130 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para la tabla Fintech */
+    .table-modern thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid var(--glass-border);
+    }
+
+    .table-modern tbody td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    .table-modern tbody tr:hover {
+        background-color: var(--primary-soft);
+        transition: background 0.2s;
+    }
+
+    /* Badges Soft según el tipo de entidad */
+    .badge-tipo {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+    .badge-proveedor { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.15); }
+    .badge-cliente { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.15); }
+    .badge-ambos { background: rgba(19, 112, 182, 0.1); color: #1370b6; border: 1px solid rgba(19, 112, 182, 0.15); }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado con estética Fintech -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-address-book text-primary me-2"></i> Directorio de Entidades
+            </h3>
+            <p class="text-muted small mb-0">Gestión de proveedores, clientes y socios comerciales</p>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- Buscador rápido (opcional pero recomendado en fintech) -->
+            <div class="input-group input-group-sm shadow-sm" style="width: 250px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" class="form-control border-start-0" placeholder="Buscar entidad...">
+            </div>
+            <a href="{% url 'crear_entidad' %}" class="btn btn-primary shadow-sm px-4">
+                <i class="fa-solid fa-plus me-1"></i> Nueva Entidad
+            </a>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal (Glassmorphism) -->
+    <div class="glass-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">RUC / DNI</th>
+                        <th style="width: 35%;">Entidad / Razón Social</th>
+                        <th style="width: 15%;">Tipo de Relación</th>
+                        <th style="width: 25%;">Dirección</th>
+                        <th style="width: 10%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entidades %}
+                    <tr>
+                        <td class="fw-bold text-primary" style="font-family: 'Monaco', monospace; letter-spacing: -0.5px;">
+                            {{ e.numero_documento }}
+                        </td>
+                        <td>
+                            <div class="fw-800 text-dark">{{ e.nombre_razon_social }}</div>
+                            <small class="text-muted">ID Sistema: #{{ e.id }}</small>
+                        </td>
+                        <td>
+                            {% if e.tipo_entidad == 'Proveedor' %}
+                                <span class="badge badge-tipo badge-proveedor"><i class="fa-solid fa-truck-ramp-box me-1"></i> PROVEEDOR</span>
+                            {% elif e.tipo_entidad == 'Cliente' %}
+                                <span class="badge badge-tipo badge-cliente"><i class="fa-solid fa-bag-shopping me-1"></i> CLIENTE</span>
+                            {% else %}
+                                <span class="badge badge-tipo badge-ambos"><i class="fa-solid fa-arrows-left-right me-1"></i> AMBOS</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-muted text-wrap" style="max-width: 200px; font-size: 0.8rem;">
+                                {{ e.direccion|default:"<span class='opacity-50'>No registrada</span>"|safe }}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-light border rounded-pill px-3" data-bs-toggle="dropdown">
+                                    <i class="fa-solid fa-ellipsis-vertical text-muted"></i>
+                                </button>
+                                <ul class="dropdown-menu glass-card border-0 shadow-lg p-2">
+                                    <li><a class="dropdown-item rounded-2 small mb-1" href="#"><i class="fa-solid fa-eye me-2 text-primary"></i> Ver Detalle</a></li>
+                                    <li><a class="dropdown-item rounded-2 small mb-1" href="#"><i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Editar</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item rounded-2 small text-danger" href="#"><i class="fa-solid fa-trash me-2"></i> Eliminar</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="opacity-25 mb-3">
+                                <i class="fa-solid fa-users-slash fa-4x"></i>
+                            </div>
+                            <h5 class="text-muted fw-light">No hay entidades registradas</h5>
+                            <p class="text-muted small">Comienza agregando tu primer cliente o proveedor.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

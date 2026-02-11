@@ -1,0 +1,184 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para tarjetas de resumen de auditoría */
+    .audit-card {
+        border-radius: 16px;
+        padding: 20px;
+        transition: transform 0.3s;
+        border: 1px solid var(--glass-border);
+    }
+    .audit-card:hover { transform: translateY(-5px); }
+
+    .audit-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    /* Tabla de Auditoría */
+    .table-modern-audit thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+    }
+
+    .table-modern-audit tbody td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    /* Badges Soft para Trazabilidad */
+    .badge-soft {
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+    .badge-venta { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+    .badge-compra { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .badge-escudo { background: rgba(6, 182, 212, 0.1); color: #0891b2; border: 1px solid rgba(6, 182, 212, 0.2); }
+
+    .mono-num {
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-weight: 700;
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-microscope text-primary me-2"></i> Auditoría de IGV
+            </h3>
+            <p class="text-muted small mb-0">Análisis detallado de trazabilidad tributaria y crédito fiscal</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-white border shadow-sm rounded-3 px-3 fw-bold small">
+            <i class="fa-solid fa-chart-pie me-2 text-primary"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Resumen del Reporte con Borde Colorido -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="glass-card audit-card border-start border-primary border-4 shadow-sm">
+                <div class="audit-icon bg-primary-soft text-primary">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">IGV Ventas (Débito)</small>
+                <h4 class="fw-800 text-primary mt-1 mb-0">S/ {{ total_debito|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card audit-card border-start border-danger border-4 shadow-sm">
+                <div class="audit-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">IGV Compras (Crédito)</small>
+                <h4 class="fw-800 text-danger mt-1 mb-0">S/ {{ total_credito|floatformat:2 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card audit-card border-start border-success border-4 shadow-sm">
+                <div class="audit-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 1px;">Neto a Regularizar</small>
+                <h4 class="fw-800 text-dark mt-1 mb-0">S/ {{ igv_neto|floatformat:2 }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern-audit mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Fecha</th>
+                        <th style="width: 25%;">Documento / Entidad</th>
+                        <th style="width: 10%;">Tipo</th>
+                        <th style="width: 15%; text-align: right;">IGV Orig.</th>
+                        <th style="width: 8%; text-align: center;">T.C.</th>
+                        <th style="width: 15%; text-align: right;">IGV Soles (PEN)</th>
+                        <th style="width: 15%;">Atributos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in reporte %}
+                    <tr>
+                        <!-- Fecha -->
+                        <td>
+                            <div class="fw-bold text-dark">{{ item.fecha|date:"d/m/Y" }}</div>
+                        </td>
+
+                        <!-- Documento -->
+                        <td>
+                            <div class="fw-800 text-dark" style="font-size: 0.8rem;">{{ item.documento }}</div>
+                            <small class="text-muted">{{ item.entidad|truncatechars:35 }}</small>
+                        </td>
+
+                        <!-- Tipo -->
+                        <td>
+                            <span class="badge-soft {% if item.tipo == 'Venta' %}badge-venta{% else %}badge-compra{% endif %}">
+                                {{ item.tipo|upper }}
+                            </span>
+                        </td>
+
+                        <!-- IGV Original -->
+                        <td class="text-end">
+                            <span class="text-muted small">{{ item.moneda }}</span> 
+                            <span class="fw-bold">{{ item.igv_original|floatformat:2 }}</span>
+                        </td>
+
+                        <!-- T.C. -->
+                        <td class="text-center">
+                            <code class="text-muted">{{ item.tc|floatformat:3 }}</code>
+                        </td>
+
+                        <!-- IGV Soles (Dato Clave) -->
+                        <td class="text-end">
+                            <div class="mono-num {% if item.tipo == 'Venta' %}text-success{% else %}text-danger{% endif %}" style="font-size: 0.95rem;">
+                                {% if item.tipo == 'Compra' %}-{% endif %} S/ {{ item.igv_pen|floatformat:2 }}
+                            </div>
+                        </td>
+
+                        <!-- Nota / Escudo -->
+                        <td>
+                            {% if item.es_escudo %}
+                                <span class="badge-soft badge-escudo">
+                                    <i class="fa-solid fa-shield-halved me-1"></i> ESCUDO
+                                </span>
+                            {% else %}
+                                <span class="text-muted opacity-25">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="fa-solid fa-file-circle-exclamation fa-3x text-muted opacity-25 mb-3"></i>
+                            <p class="text-muted">No se han encontrado registros para el periodo actual.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

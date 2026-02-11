@@ -1,0 +1,15 @@
+services:
+  contabilidad:
+    build: .
+    container_name: fg_contabilidad
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+    networks:
+      - web_network
+
+networks:
+  web_network:
+    external: true

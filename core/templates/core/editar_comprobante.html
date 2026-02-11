@@ -1,0 +1,104 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para inputs tipo Fintech */
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+    .form-control-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+    }
+    .form-control-readonly {
+        background: rgba(241, 245, 249, 0.5) !important;
+        border-style: dashed;
+        color: var(--text-muted);
+    }
+    .alert-soft-warning {
+        background-color: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        color: #d97706;
+        border-radius: 12px;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <!-- Usamos tu clase glass-card aquí -->
+            <div class="glass-card border-0 p-4 p-md-5">
+                
+                <!-- Encabezado refinado -->
+                <div class="mb-4">
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">
+                        <i class="fa-solid fa-pen-to-square text-primary me-2"></i>Editar Monto Financiero
+                    </h4>
+                    <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.65rem;">AUDITORÍA RNF-02</span>
+                </div>
+
+                <div class="alert alert-soft-warning d-flex align-items-center mb-4" role="alert">
+                    <i class="fa-solid fa-shield-halved me-3 fs-4"></i>
+                    <div class="small">
+                        <strong>Control de Seguridad:</strong> Esta modificación quedará vinculada permanentemente a su usuario <strong>{{ user.username }}</strong> en el log de auditoría.
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="row g-3">
+                        <!-- Comprobante (Readonly) -->
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-muted">Comprobante Referencia</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                    <i class="fa-solid fa-file-invoice text-muted"></i>
+                                </span>
+                                <input type="text" class="form-control form-control-fintech form-control-readonly border-start-0" 
+                                       value="{{ comprobante.serie }}-{{ comprobante.numero }}" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Monto Total -->
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-muted">Monto Total ({{ comprobante.moneda }})</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border); color: var(--primary); font-weight: 700;">
+                                    {% if comprobante.moneda == 'USD' %}${% else %}S/{% endif %}
+                                </span>
+                                <input type="number" step="0.01" name="total" class="form-control form-control-fintech border-start-0" 
+                                       value="{{ comprobante.total }}" required style="font-weight: 700; font-size: 1.1rem;">
+                            </div>
+                        </div>
+
+                        <!-- Motivo -->
+                        <div class="col-12 mb-4">
+                            <label class="form-label fw-bold small text-danger">Motivo de la Modificación</label>
+                            <textarea name="motivo_cambio" class="form-control form-control-fintech" rows="3" 
+                                      placeholder="Describa el motivo técnico o error detectado..." required></textarea>
+                            <div class="form-text" style="font-size: 0.7rem;">Sea preciso, esta información será revisada en auditorías contables.</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column flex-md-row gap-3 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary px-4 py-2 order-md-2 flex-grow-1 shadow-sm">
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Guardar y Registrar
+                        </button>
+                        <a href="{% url 'lista_comprobantes' %}" class="btn btn-light border px-4 py-2 order-md-1">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

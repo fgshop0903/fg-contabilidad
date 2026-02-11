@@ -1,0 +1,226 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos de tabla estilo Facturación Electrónica */
+    .table-modern thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid var(--glass-border);
+    }
+
+    .table-modern tbody td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    .table-modern tbody tr:hover {
+        background-color: var(--primary-soft);
+        transition: all 0.2s;
+    }
+
+    /* Badge SUNAT con colores soft */
+    .badge-sunat {
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.65rem;
+        letter-spacing: 0.3px;
+    }
+    .badge-sunat-aceptado { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .badge-sunat-pendiente { background: rgba(245, 158, 11, 0.1); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.2); }
+
+    /* Estilo para Serie-Número */
+    .doc-number {
+        font-family: 'Monaco', 'Consolas', monospace;
+        background: #f1f5f9;
+        padding: 3px 8px;
+        border-radius: 6px;
+        color: var(--text-dark);
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    /* Botones de acción minimalistas */
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s;
+        border: 1px solid var(--glass-border);
+        background: white;
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        color: var(--primary);
+    }
+    .btn-action i { font-size: 0.85rem; }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado con estadísticas rápidas -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-file-lines text-primary me-2"></i> {{ titulo }}
+            </h3>
+            <p class="text-muted small mb-0">Gestión de comprobantes electrónicos y estados financieros</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-light border px-3 shadow-sm small fw-bold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
+            </a>
+            <!-- Botón de acción principal según el contexto -->
+            {% if 'Compra' in titulo %}
+            <a href="{% url 'cargar_compra' %}" class="btn btn-primary shadow-sm px-4">
+                <i class="fa-solid fa-plus me-1"></i> Nueva Compra
+            </a>
+            {% elif 'Venta' in titulo %}
+            <a href="{% url 'cargar_venta' %}" class="btn btn-primary shadow-sm px-4">
+                <i class="fa-solid fa-plus me-1"></i> Nueva Venta
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Contenedor de Tabla Glass -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Fecha</th>
+                        <th style="width: 15%;">Documento</th>
+                        <th style="width: 25%;">Entidad / Razón Social</th>
+                        <th style="width: 10%;">Moneda</th>
+                        <th style="width: 13%; text-align: right;">Total</th>
+                        <th style="width: 12%; text-align: center;">Estado SUNAT</th>
+                        <th style="width: 13%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in comprobantes %}
+                    <tr>
+                        <!-- 1. Fecha -->
+                        <td>
+                            <div class="fw-bold text-dark">{{ c.fecha_emision|date:"d/m/Y" }}</div>
+                            <small class="text-muted" style="font-size: 0.7rem;">Emitido</small>
+                        </td>
+
+                        <!-- 2. Documento -->
+                        <td>
+                            <span class="doc-number">{{ c.serie }}-{{ c.numero }}</span>
+                        </td>
+
+                        <!-- 3. Entidad -->
+                        <td>
+                            <div class="fw-800 text-dark text-truncate" style="max-width: 200px;">
+                                {{ c.entidad.nombre_razon_social }}
+                            </div>
+                            <small class="text-muted">RUC: {{ c.entidad.numero_documento }}</small>
+                        </td>
+
+                        <!-- 4. Moneda -->
+                        <td>
+                            <span class="badge bg-light text-dark border fw-bold">{{ c.moneda }}</span>
+                        </td>
+
+                        <!-- 5. Total -->
+                        <td class="text-end">
+                            <div class="fw-800 {% if c.operacion == 'Compra' %}text-danger{% else %}text-success{% endif %}" style="font-size: 1rem;">
+                                {% if c.moneda == 'USD' %}${% else %}S/{% endif %} {{ c.total|floatformat:2 }}
+                            </div>
+                        </td>
+
+                        <!-- 6. Estado SUNAT -->
+                        <td class="text-center">
+                            {% if c.estado_sunat == 'ACEPTADO' %}
+                                <span class="badge-sunat badge-sunat-aceptado">
+                                    <i class="fa-solid fa-check-double me-1"></i> ACEPTADO
+                                </span>
+                            {% else %}
+                                <span class="badge-sunat badge-sunat-pendiente">
+                                    <i class="fa-solid fa-clock me-1"></i> {{ c.estado_sunat }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 7. Acciones -->
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-1">
+                                <!-- Validar -->
+                                <a href="{% url 'validar_sunat' c.id %}" class="btn-action" title="Validar SUNAT">
+                                    <i class="fa-solid fa-shield-check text-primary"></i>
+                                </a>
+
+                                <!-- Registrar Dinero (Cobro/Pago) -->
+                                <a href="{% url 'registrar_pago_comprobante' c.id %}" class="btn-action" title="Mover Dinero">
+                                    <i class="fa-solid fa-hand-holding-dollar {% if c.operacion == 'Compra' %}text-danger{% else %}text-success{% endif %}"></i>
+                                </a>
+
+                                <!-- Cuotas (Solo Ventas) -->
+                                {% if c.operacion == 'Venta' %}
+                                    {% for cuenta in c.cuenta_estado.all %}
+                                        <a href="{% url 'configurar_cuotas' cuenta.id %}" class="btn-action" title="Programar Cuotas">
+                                            <i class="fa-solid fa-calendar-day text-info"></i>
+                                        </a>
+                                    {% endfor %}
+                                {% endif %}
+
+                                {% if c.serie == 'V-MAN' %}
+                                    <a href="{% url 'ver_pdf_venta_manual' c.id %}" class="btn btn-sm btn-light border" title="Descargar PDF de Nota/Boleta">
+                                        <i class="fas fa-file-pdf text-danger"></i>
+                                    </a>
+                                {% endif %}
+
+                                <!-- Admin -->
+                                {% if user.rol.nombre == 'Admin' %}
+                                    <div class="dropdown">
+                                        <a href="#" class="btn-action" data-bs-toggle="dropdown"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                                        <ul class="dropdown-menu shadow-lg border-0 glass-card">
+                                            <!-- CAMBIO AQUÍ: Ahora es Edición Completa -->
+                                            <li>
+                                                <a class="dropdown-item small" href="{% url 'editar_comprobante' c.id %}">
+                                                    <i class="fa-solid fa-file-pen text-warning me-2"></i> Editar Comprobante
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item small text-danger" href="{% url 'eliminar_comprobante' c.id %}">
+                                                    <i class="fa-solid fa-trash me-2"></i> Eliminar Documento
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="fa-solid fa-folder-open fa-3x text-muted opacity-25 mb-3"></i>
+                            <p class="text-muted">No se encontraron comprobantes registrados.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

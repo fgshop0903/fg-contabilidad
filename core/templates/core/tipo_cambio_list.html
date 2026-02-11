@@ -1,0 +1,156 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para visualización de divisas */
+    .tc-card-header {
+        background: rgba(19, 112, 182, 0.03);
+        border-bottom: 1px solid var(--glass-border);
+        padding: 15px 20px;
+    }
+
+    .table-modern-tc thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 1px;
+        padding: 15px;
+    }
+
+    .table-modern-tc tbody td {
+        padding: 18px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+
+    /* Tipografía numérica para precisión */
+    .tc-number {
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+
+    .tc-buy { color: #10b981; } /* Verde para Compra */
+    .tc-sell { color: #ef4444; } /* Rojo para Venta */
+
+    .badge-sunat {
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--primary-soft);
+        font-weight: 700;
+        font-size: 0.65rem;
+        padding: 5px 10px;
+        border-radius: 6px;
+    }
+
+    .sync-button {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border: none;
+        box-shadow: 0 4px 15px rgba(19, 112, 182, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .sync-button:hover {
+        transform: rotate(15deg) scale(1.05);
+        box-shadow: 0 6px 20px rgba(19, 112, 182, 0.3);
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado Estilo Fintech -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-coins text-primary me-2"></i> Tipo de Cambio
+            </h3>
+            <p class="text-muted small mb-0">Referencia oficial SUNAT para operaciones en USD (RF-18)</p>
+        </div>
+        <div>
+            <a href="#" class="btn btn-primary sync-button px-4 py-2 rounded-3 fw-bold">
+                <i class="fa-solid fa-arrows-rotate me-2"></i> Sincronizar SUNAT
+            </a>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="tc-card-header d-flex justify-content-between align-items-center">
+            <span class="small fw-800 text-muted text-uppercase" style="letter-spacing: 1px;">Historial Reciente</span>
+            <span class="badge bg-white text-success border small">
+                <i class="fa-solid fa-circle-check me-1"></i> Sistema Actualizado
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-modern-tc mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Fecha</th>
+                        <th style="width: 20%; text-align: center;">Compra (Bid)</th>
+                        <th style="width: 20%; text-align: center;">Venta (Ask)</th>
+                        <th style="width: 20%;">Fuente Oficial</th>
+                        <th style="width: 20%; text-align: center;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tc in historial %}
+                    <tr>
+                        <!-- Fecha -->
+                        <td>
+                            <div class="fw-800 text-dark">{{ tc.fecha|date:"d M, Y" }}</div>
+                            <small class="text-muted" style="font-size: 0.7rem;">Cierre de día</small>
+                        </td>
+
+                        <!-- Valor Compra -->
+                        <td class="text-center">
+                            <div class="tc-number tc-buy">
+                                <small class="fw-normal" style="font-size: 0.7rem;">S/</small> {{ tc.compra|floatformat:3 }}
+                            </div>
+                        </td>
+
+                        <!-- Valor Venta -->
+                        <td class="text-center">
+                            <div class="tc-number tc-sell">
+                                <small class="fw-normal" style="font-size: 0.7rem;">S/</small> {{ tc.venta|floatformat:3 }}
+                            </div>
+                        </td>
+
+                        <!-- Fuente -->
+                        <td>
+                            <span class="badge-sunat">
+                                <i class="fa-solid fa-building-columns me-1"></i> {{ tc.fuente|upper }}
+                            </span>
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center text-success fw-bold" style="font-size: 0.75rem;">
+                                <i class="fa-solid fa-circle-check me-2"></i> VALIDADO
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="fa-solid fa-chart-line fa-4x text-muted opacity-25 mb-3"></i>
+                            <p class="text-muted">No se registran datos históricos en el sistema.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer Informativo -->
+        <div class="p-3 bg-light bg-opacity-50 border-top small text-muted">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-circle-info text-primary"></i>
+                <span>Los valores mostrados se utilizan para el cálculo automático de <strong>Diferencia de Cambio</strong> en el Dashboard Analítico.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

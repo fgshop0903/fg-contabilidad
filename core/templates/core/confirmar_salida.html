@@ -1,0 +1,86 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilo para el icono de salida animado */
+    .exit-icon-circle {
+        width: 100px;
+        height: 100px;
+        background: rgba(19, 112, 182, 0.1);
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 30px;
+        font-size: 3rem;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .exit-icon-circle:hover {
+        transform: rotate(-15deg) scale(1.1);
+        background: var(--primary);
+        color: white;
+    }
+
+    .logout-card {
+        max-width: 500px;
+        margin: 60px auto;
+    }
+
+    .btn-logout-confirm {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 16px;
+        border-radius: 16px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        box-shadow: 0 10px 20px rgba(19, 112, 182, 0.15);
+    }
+
+    .btn-logout-confirm:hover {
+        background: #105d98;
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(19, 112, 182, 0.25);
+    }
+</style>
+
+<div class="dashboard-container logout-card animate__animated animate__zoomIn animate__faster">
+    <div class="glass-card text-center p-5 shadow-lg">
+        
+        <!-- Icono de Salida -->
+        <div class="exit-icon-circle">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </div>
+
+        <!-- Título y Texto -->
+        <h3 class="fw-800 mb-2" style="color: var(--text-dark); letter-spacing: -1px;">¿Deseas cerrar sesión?</h3>
+        <p class="text-muted px-3">
+            Asegúrate de haber guardado tus cambios. Tu sesión de trabajo en <strong>FG Network</strong> finalizará de forma segura.
+        </p>
+        
+        <!-- Formulario de Acción -->
+        <form method="POST" action="{% url 'logout' %}" class="mt-4">
+            {% csrf_token %}
+            <div class="d-grid gap-3">
+                <button type="submit" class="btn btn-logout-confirm">
+                    <i class="fa-solid fa-power-off me-2"></i> Sí, cerrar mi sesión ahora
+                </button>
+                <a href="{% url 'dashboard' %}" class="btn btn-link text-decoration-none fw-bold text-muted small">
+                    <i class="fa-solid fa-arrow-left me-1"></i> No, continuar trabajando
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Mensaje de Seguridad -->
+    <div class="text-center mt-4">
+        <p class="text-muted small opacity-75">
+            <i class="fa-solid fa-shield-halved me-1"></i> Gracias por usar nuestra plataforma segura.
+        </p>
+    </div>
+</div>
+
+{% endblock %}

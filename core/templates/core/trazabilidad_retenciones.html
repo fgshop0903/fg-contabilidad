@@ -1,0 +1,176 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Identidad visual para Retenciones (Púrpura Fintech) */
+    :root {
+        --retencion-main: #6366f1; /* Un indigo más moderno que el purple estándar */
+        --retencion-soft: rgba(99, 102, 241, 0.1);
+    }
+
+    /* Card de Resumen con Gradiente Soft */
+    .retencion-hero {
+        background: linear-gradient(135deg, var(--retencion-main) 0%, #4f46e5 100%);
+        border-radius: 24px;
+        padding: 30px;
+        color: white;
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+    }
+
+    /* Tabla de Auditoría */
+    .table-modern-audit thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+    }
+
+    .table-modern-audit tbody td {
+        padding: 16px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    .cert-badge {
+        font-family: 'Monaco', 'Consolas', monospace;
+        background: #f1f5f9;
+        color: var(--text-dark);
+        border: 1px solid var(--glass-border);
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .mono-num {
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-weight: 700;
+    }
+
+    .invoice-link {
+        color: var(--retencion-main);
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .invoice-link:hover { color: #4338ca; text-decoration: underline; }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-piggy-bank text-indigo me-2" style="color: var(--retencion-main);"></i> Auditoría de Retenciones
+            </h3>
+            <p class="text-muted small mb-0">Trazabilidad de certificados y aplicación de crédito fiscal SUNAT</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-white border shadow-sm rounded-3 px-3 fw-bold small">
+            <i class="fa-solid fa-chart-pie me-2 text-indigo" style="color: var(--retencion-main);"></i> Dashboard
+        </a>
+    </div>
+
+    <!-- Resumen del Crédito SUNAT -->
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6">
+            <div class="retencion-hero shadow">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="bg-white bg-opacity-20 rounded-3 p-2">
+                        <i class="fa-solid fa-shield-check fs-4"></i>
+                    </div>
+                    <span class="badge bg-white text-indigo rounded-pill small fw-bold" style="color: var(--retencion-main) !important;">ACTIVO</span>
+                </div>
+                <small class="text-uppercase fw-bold opacity-75" style="font-size: 0.65rem; letter-spacing: 1px;">Total Crédito SUNAT Acumulado</small>
+                <h2 class="display-6 fw-800 mb-1">S/ {{ total_soles|floatformat:2 }}</h2>
+                <p class="small mb-0 opacity-75">Suma de certificados procesados exitosamente</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern-audit mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Fecha Cert.</th>
+                        <th style="width: 15%;">Certificado</th>
+                        <th style="width: 23%;">Cliente / Agente</th>
+                        <th style="width: 15%;">Factura Afectada</th>
+                        <th style="width: 8%; text-align: center;">T.C. Pago</th>
+                        <th style="width: 12%; text-align: right;">Retención (S/)</th>
+                        <th style="width: 15%; text-align: right;">Impacto Deuda</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalles %}
+                    <tr>
+                        <!-- 1. Fecha -->
+                        <td>
+                            <div class="fw-bold text-dark">{{ d.certificado.fecha_emision|date:"d M, Y" }}</div>
+                        </td>
+
+                        <!-- 2. Nro Certificado -->
+                        <td>
+                            <span class="cert-badge">{{ d.certificado.serie_numero }}</span>
+                        </td>
+
+                        <!-- 3. Agente -->
+                        <td>
+                            <div class="fw-800 text-dark" style="font-size: 0.8rem;">
+                                {{ d.certificado.agente_retencion.nombre_razon_social|truncatechars:35 }}
+                            </div>
+                            <small class="text-muted">RUC: {{ d.certificado.agente_retencion.numero_documento }}</small>
+                        </td>
+
+                        <!-- 4. Factura Link -->
+                        <td>
+                            <a href="#" class="invoice-link small">
+                                <i class="fa-solid fa-file-invoice"></i> {{ d.comprobante.serie }}-{{ d.comprobante.numero }}
+                            </a>
+                        </td>
+
+                        <!-- 5. T.C. -->
+                        <td class="text-center">
+                            <code class="text-muted" style="font-size: 0.75rem;">{{ d.tipo_cambio_aplicado|floatformat:3 }}</code>
+                        </td>
+
+                        <!-- 6. Retención Soles (Crédito) -->
+                        <td class="text-end">
+                            <div class="mono-num text-primary" style="font-size: 0.9rem;">
+                                S/ {{ d.monto_retencion_pen|floatformat:2 }}
+                            </div>
+                        </td>
+
+                        <!-- 7. Descuento en Moneda Origen -->
+                        <td class="text-end">
+                            <div class="mono-num text-danger" style="font-size: 0.9rem;">
+                                - {{ d.comprobante.moneda }} {{ d.monto_descuento_moneda_origen|floatformat:2 }}
+                            </div>
+                            <small class="text-muted" style="font-size: 0.6rem;">REDUCCIÓN DEUDA</small>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="opacity-25 mb-3">
+                                <i class="fa-solid fa-file-circle-minus fa-4x text-muted"></i>
+                            </div>
+                            <h5 class="text-muted fw-light">Sin conciliaciones de retención</h5>
+                            <p class="text-muted small">Los certificados XML procesados aparecerán aquí.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

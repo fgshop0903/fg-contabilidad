@@ -1,0 +1,154 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Hero del Monto de Liquidación */
+    .liquidation-hero {
+        background: linear-gradient(135deg, rgba(19, 112, 182, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 35px 20px;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .amount-display {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text-dark);
+        letter-spacing: -1.5px;
+        margin-bottom: 5px;
+    }
+
+    .label-uppercase {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: var(--text-muted);
+    }
+
+    /* Estilos para selectores Fintech */
+    .form-select-fintech {
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .divider-text {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 25px 0 15px;
+    }
+
+    .divider-text::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    .info-alert {
+        background: rgba(19, 112, 182, 0.04);
+        border-radius: 12px;
+        padding: 15px;
+        border-left: 4px solid var(--primary);
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado -->
+                <div class="text-center mb-4">
+                    <div class="bg-primary-soft text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-handshake-slash fs-4"></i>
+                    </div>
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">Liquidar Préstamo</h4>
+                    <p class="text-muted small">Cierre total de obligación financiera</p>
+                </div>
+
+                <!-- Monto Total -->
+                <div class="liquidation-hero shadow-sm">
+                    <span class="label-uppercase">Total a Devolver (Capital + Int.)</span>
+                    <h2 class="amount-display">
+                        <small style="font-size: 1.2rem; font-weight: 400; opacity: 0.6;">{{ prestamo.moneda }}</small> 
+                        {{ total_a_pagar|floatformat:2 }}
+                    </h2>
+                    <div class="badge bg-white text-primary border rounded-pill px-3 py-2 mt-2 shadow-sm">
+                        <i class="fa-solid fa-university me-1"></i> {{ prestamo.prestamista|truncatechars:25 }}
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <div class="divider-text">Origen de Fondos</div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Caja Chica (Efectivo)</label>
+                        <select name="caja_id" class="form-select form-select-fintech">
+                            <option value="">-- No usar efectivo --</option>
+                            {% for c in cajas %}
+                            <option value="{{ c.id }}">💵 {{ c.nombre }} (Disponible: S/ {{ c.saldo_actual }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">Cuenta Bancaria</label>
+                        <select name="banco_id" class="form-select form-select-fintech" required>
+                            <option value="">-- Seleccionar Banco --</option>
+                            {% for b in bancos %}
+                            <option value="{{ b.id }}">🏦 {{ b.banco }} (S/ {{ b.saldo_actual }}) - {{ b.numero_cuenta|slice:"-4:" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Nota de Advertencia -->
+                    <div class="info-alert d-flex align-items-start gap-3 mb-4">
+                        <i class="fa-solid fa-circle-info text-primary mt-1"></i>
+                        <div class="small text-muted">
+                            Al confirmar, se registrará el egreso y el préstamo quedará marcado como <strong>LIQUIDADO</strong> en el historial.
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold mb-3">
+                            <i class="fa-solid fa-check-double me-2"></i> Confirmar y Cerrar Préstamo
+                        </button>
+                        
+                        <a href="{% url 'lista_prestamos' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Volver al listado
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Seguridad -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1 text-primary"></i>
+                <small class="fw-bold">Validado por Control de Auditoría RNF-05</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

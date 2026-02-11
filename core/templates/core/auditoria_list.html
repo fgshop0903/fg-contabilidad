@@ -1,0 +1,127 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para badges tipo Fintech (Soft colors) */
+    .badge-soft-danger {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .badge-soft-warning {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .badge-soft-info {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    .table-modern-audit thead th {
+        background-color: rgba(248, 250, 252, 0.5);
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        padding: 15px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .table-modern-audit tbody td {
+        padding: 15px;
+        font-size: 0.85rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .log-details {
+        max-width: 300px;
+        white-space: normal;
+        color: #64748b;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-0" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-user-shield text-danger me-2"></i> Log de Auditoría
+            </h3>
+            <p class="text-muted mb-0 small">Seguimiento de acciones críticas y modificaciones del sistema</p>
+        </div>
+        <div>
+            <span class="badge bg-white text-dark border p-2 shadow-sm rounded-3">
+                <i class="fa-solid fa-clock-rotate-left me-1 text-primary"></i> {{ logs|length }} Registros recientes
+            </span>
+        </div>
+    </div>
+
+    <!-- Card de Tabla -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern-audit mb-0">
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Usuario</th>
+                        <th>Acción</th>
+                        <th>Módulo/Tabla</th>
+                        <th>ID Ref.</th>
+                        <th>Detalles del Cambio / Motivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-dark fw-medium">
+                            {{ log.fecha_hora|date:"d/m/Y" }}<br>
+                            <small class="text-muted">{{ log.fecha_hora|date:"H:i:s" }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.75rem; font-weight: 700;">
+                                    {{ log.usuario.username|slice:":1"|upper }}
+                                </div>
+                                <span class="fw-bold">{{ log.usuario.username }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if log.accion == 'DELETE' %}
+                                <span class="badge badge-soft-danger rounded-pill px-3">ELIMINAR</span>
+                            {% elif log.accion == 'UPDATE' %}
+                                <span class="badge badge-soft-warning rounded-pill px-3">EDITAR</span>
+                            {% else %}
+                                <span class="badge badge-soft-info rounded-pill px-3">{{ log.accion }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-muted border fw-normal">{{ log.tabla_afectada }}</span>
+                        </td>
+                        <td class="fw-mono text-muted">#{{ log.referencia_id }}</td>
+                        <td>
+                            <div class="log-details">
+                                <i class="fa-solid fa-info-circle me-1 opacity-50"></i> {{ log.motivo_cambio|default:"Sin detalles adicionales" }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="fa-solid fa-folder-open text-muted opacity-25 fa-3x mb-3"></i>
+                            <p class="text-muted">No se han encontrado registros de auditoría.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

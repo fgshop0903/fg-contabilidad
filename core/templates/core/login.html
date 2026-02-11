@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <title>FG Network - Login</title>
+    
+    <style>
+        :root {
+            --primary: #0E6CB1;
+            --secondary: #035391;
+            --mountain-1: #2d5a27;
+            --mountain-2: #3d7a35;
+            --mountain-3: #4ea344;
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- ESCENARIO DINÁMICO --- */
+        #world {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            transition: background 3s ease;
+            overflow: hidden;
+        }
+
+        /* Temas de Horario */
+        .day-mode #world { background: linear-gradient(to bottom, #4da9ff, #c0e4ff); }
+        .night-mode #world { background: linear-gradient(to bottom, #020b1a, #0f2b5c); }
+
+        /* Astro (Sol/Luna) */
+        .astro {
+            position: absolute;
+            top: 10%;
+            left: 15%;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            transition: all 3s ease;
+        }
+        .day-mode .astro { background: #ffce54; box-shadow: 0 0 50px #ffce54; }
+        .night-mode .astro { background: #f5f5f5; box-shadow: 0 0 30px #f5f5f5; transform: translate(50px, 20px); }
+
+        /* Nubes */
+        .cloud {
+            position: absolute;
+            background: white;
+            border-radius: 50px;
+            opacity: 0.8;
+            animation: moveClouds linear infinite;
+        }
+        .cloud::after, .cloud::before {
+            content: ''; position: absolute; background: white; border-radius: 50%;
+        }
+        .cloud-1 { width: 100px; height: 40px; top: 15%; animation-duration: 40s; }
+        .cloud-2 { width: 150px; height: 50px; top: 25%; animation-duration: 60s; opacity: 0.5; }
+
+        @keyframes moveClouds {
+            from { left: -200px; }
+            to { left: 100%; }
+        }
+
+        /* Aves (Cajamarca vibes) */
+        .bird {
+            position: absolute;
+            top: 20%;
+            left: -50px;
+            animation: fly 25s linear infinite;
+        }
+        .bird i { color: #333; font-size: 0.8rem; animation: flap 0.5s ease-in-out infinite; }
+        .night-mode .bird { display: none; }
+
+        @keyframes fly {
+            0% { transform: translate(0, 0); left: -50px; }
+            50% { transform: translate(100px, 30px); }
+            100% { transform: translate(0, 0); left: 110%; }
+        }
+        @keyframes flap {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.3); }
+        }
+
+        /* Cerros Multicapa */
+        .mountains-container {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            height: 300px;
+        }
+        .mountain-svg {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .mt-back { fill: var(--mountain-1); opacity: 0.7; transform: translateY(20px); }
+        .mt-mid { fill: var(--mountain-2); opacity: 0.9; transform: translateY(50px); }
+        .mt-front { fill: var(--mountain-3); transform: translateY(80px); }
+
+        /* Carretera */
+        .road {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background: #333;
+            border-top: 5px solid #444;
+        }
+        .road-line {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            height: 4px;
+            background: repeating-linear-gradient(90deg, #fff 0, #fff 40px, transparent 40px, transparent 80px);
+        }
+
+        /* Camioncito */
+        .truck-container {
+            position: absolute;
+            bottom: 30px;
+            left: -200px;
+            width: 150px;
+            animation: drive 12s linear infinite;
+            z-index: 10;
+        }
+        @keyframes drive { to { left: 110%; } }
+
+        .truck-body {
+            background: white;
+            border-radius: 4px;
+            padding: 5px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 0.6rem;
+            color: var(--primary);
+            border: 2px solid #ddd;
+            position: relative;
+        }
+        .truck-cab {
+            position: absolute;
+            right: -30px;
+            bottom: 0;
+            width: 35px;
+            height: 30px;
+            background: var(--primary);
+            border-radius: 4px 12px 4px 4px;
+        }
+        .headlight {
+            position: absolute;
+            right: -60px;
+            top: 10px;
+            width: 80px;
+            height: 40px;
+            background: radial-gradient(ellipse at left, rgba(255,255,200,0.4), transparent 70%);
+            clip-path: polygon(0 40%, 100% 0, 100% 100%, 0 60%);
+            display: none;
+        }
+        .night-mode .headlight { display: block; }
+
+        .wheel {
+            position: absolute;
+            bottom: -10px;
+            width: 18px;
+            height: 18px;
+            background: #111;
+            border-radius: 50%;
+            border: 2px dashed #555;
+            animation: spin 0.4s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- TARJETA DE LOGIN --- */
+        .login-wrapper {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 28px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-control {
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            background: rgba(255,255,255,0.9);
+        }
+        .form-control:focus {
+            box-shadow: 0 0 0 4px rgba(14, 108, 177, 0.1);
+            border-color: var(--primary);
+        }
+
+        .btn-login {
+            background: var(--primary);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+        .btn-login:hover { background: var(--secondary); transform: translateY(-2px); }
+
+        /* Responsividad */
+        @media (max-width: 480px) {
+            .glass-card { padding: 1.5rem; }
+            .astro { width: 50px; height: 50px; }
+            .mountains-container { height: 150px; bottom: 80px; }
+        }
+    </style>
+</head>
+<body class="day-mode">
+
+    <!-- ESCENARIO -->
+    <div id="world">
+        <div class="astro"></div>
+        
+        <!-- Nubes -->
+        <div class="cloud cloud-1" style="left: 10%"></div>
+        <div class="cloud cloud-2" style="left: 50%"></div>
+
+        <!-- Aves -->
+        <div class="bird" style="animation-delay: 0s;"><i class="fa-solid fa-dove"></i></div>
+        <div class="bird" style="animation-delay: 10s; top: 15%"><i class="fa-solid fa-dove"></i></div>
+
+        <!-- Paisaje de Cajamarca -->
+        <div class="mountains-container">
+            <!-- Capa Atrás -->
+            <svg class="mountain-svg mt-back" viewBox="0 0 1200 300" preserveAspectRatio="none">
+                <path d="M0,300 L0,150 L200,50 L400,180 L600,20 L900,150 L1200,80 L1200,300 Z"></path>
+            </svg>
+            <!-- Capa Media -->
+            <svg class="mountain-svg mt-mid" viewBox="0 0 1200 300" preserveAspectRatio="none">
+                <path d="M0,300 L0,200 L300,80 L500,200 L800,50 L1100,220 L1200,150 L1200,300 Z"></path>
+            </svg>
+            <!-- Capa Frente -->
+            <svg class="mountain-svg mt-front" viewBox="0 0 1200 300" preserveAspectRatio="none">
+                <path d="M0,300 L0,250 L150,150 L400,260 L700,120 L1000,250 L1200,180 L1200,300 Z"></path>
+            </svg>
+        </div>
+
+        <!-- Carretera -->
+        <div class="road">
+            <div class="road-line"></div>
+            
+            <!-- Camioncito FG SHOP -->
+            <div class="truck-container">
+                <div class="truck-body">
+                    <i class="fa-solid fa-cart-shopping me-1"></i> FG SHOP
+                </div>
+                <div class="truck-cab">
+                    <div class="headlight"></div>
+                </div>
+                <div class="wheel" style="left: 10px;"></div>
+                <div class="wheel" style="left: 90px;"></div>
+                <div class="wheel" style="right: -25px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETA LOGIN -->
+    <div class="login-wrapper">
+        <div class="glass-card">
+            <div class="text-center mb-4">
+                <div class="bg-primary text-white d-inline-block p-3 rounded-4 mb-3 shadow">
+                    <i class="fa-solid fa-building-columns fa-2x"></i>
+                </div>
+                <h3 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">FG Network</h3>
+                <p class="text-muted small">Sistema Financiero Integrado</p>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                {% if form.errors %}
+                    <div class="alert alert-danger py-2 small border-0" style="border-radius: 10px;">
+                        Credenciales incorrectas
+                    </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">USUARIO</label>
+                    <input type="text" name="username" class="form-control" placeholder="Ingrese su usuario" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">CONTRASEÑA</label>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-login w-100 text-white shadow">
+                    INGRESAR AL SISTEMA <i class="fa-solid fa-arrow-right-to-bracket ms-2"></i>
+                </button>
+            </form>
+            
+            <div class="text-center mt-4 pt-2 border-top">
+                <small class="text-muted" style="font-size: 0.7rem;">&copy; 2026 Diedev. Todos los derechos reservados. | v2.4.5</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTheme() {
+            const hour = new Date().getHours();
+            // Día: 6:00 AM a 6:00 PM
+            if (hour >= 6 && hour < 18) {
+                document.body.className = "day-mode";
+            } else {
+                document.body.className = "night-mode";
+            }
+        }
+        updateTheme();
+        setInterval(updateTheme, 60000);
+    </script>
+</body>
+</html>

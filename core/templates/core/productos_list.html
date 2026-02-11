@@ -1,0 +1,212 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos de Tabla de Inventario */
+    .table-modern thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid var(--glass-border);
+    }
+
+    .table-modern tbody td {
+        padding: 18px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        font-size: 0.85rem;
+    }
+
+    /* Badges de Stock Soft */
+    .badge-stock {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .stock-ok { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .stock-empty { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    .sku-label {
+        font-family: 'Monaco', 'Consolas', monospace;
+        background: #f1f5f9;
+        padding: 3px 8px;
+        border-radius: 6px;
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .alias-text {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+        font-style: italic;
+    }
+
+    .action-icon {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: white;
+        border: 1px solid var(--glass-border);
+        color: var(--text-muted);
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .action-icon:hover {
+        background: var(--primary-soft);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado con estadísticas -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-boxes-stacked text-primary me-2"></i> Control de Inventario
+            </h3>
+            <p class="text-muted small mb-0">Monitoreo de existencias y precios referenciales de compra</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'lista_categorias' %}" class="btn btn-white border shadow-sm rounded-3 px-3 small fw-bold">
+                <i class="fa-solid fa-layer-group me-1 text-primary"></i> Categorías
+            </a>
+            <!-- Botón opcional para agregar producto si lo tienes -->
+            <button class="btn btn-primary shadow-sm px-4">
+                <i class="fa-solid fa-plus me-1"></i> Nuevo Producto
+            </button>
+        </div>
+    </div>
+
+    <!-- Resumen Rápido -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="glass-card p-3 border-0 shadow-sm d-flex align-items-center">
+                <div class="bg-primary-soft text-primary rounded-3 p-3 me-3">
+                    <i class="fa-solid fa-tag"></i>
+                </div>
+                <div>
+                    <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">TOTAL PRODUCTOS</small>
+                    <span class="fw-800 fs-5">{{ productos|length }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-3 border-0 shadow-sm d-flex align-items-center">
+                <div class="bg-soft-danger text-danger rounded-3 p-3 me-3" style="background: rgba(239, 68, 68, 0.1);">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <small class="text-muted fw-bold d-block" style="font-size: 0.65rem;">STOCK AGOTADO</small>
+                    <span class="fw-800 fs-5 text-danger">
+                        {% with agotados=productos|dictsort:"stock_actual" %}{% endwith %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Productos -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">SKU / Código</th>
+                        <th style="width: 35%;">Producto</th>
+                        <th style="width: 15%;">Categoría</th>
+                        <th style="width: 12%; text-align: center;">Stock Actual</th>
+                        <th style="width: 13%; text-align: right;">Pre. de Compra</th>
+                        <th style="width: 13%; text-align: right;">Pre. de Venta Sug.</th>
+                        <th style="width: 10%; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in productos %}
+                    <tr>
+                        <!-- SKU -->
+                        <td>
+                            <span class="sku-label">{{ p.sku|default:"S/SKU" }}</span>
+                        </td>
+
+                        <!-- Nombre y Alias -->
+                        <td>
+                            <div class="fw-800 text-dark">{{ p.nombre_interno }}</div>
+                            <span class="alias-text">
+                                <i class="fa-solid fa-magnifying-glass me-1 opacity-50"></i>
+                                {{ p.nombres_alternativos|join:", "|truncatechars:50|default:"Sin nombres adicionales" }}
+                            </span>
+                        </td>
+
+                        <!-- Categoría -->
+                        <td>
+                            <span class="text-muted fw-medium">
+                                <i class="fa-solid fa-folder-open me-1 opacity-50"></i>
+                                {{ p.categoria.nombre|default:"General" }}
+                            </span>
+                        </td>
+
+                        <!-- Stock con Badge Dinámico -->
+                        <td class="text-center">
+                            {% if p.stock_actual > 0 %}
+                                <span class="badge-stock stock-ok">
+                                    <i class="fa-solid fa-circle-check"></i> {{ p.stock_actual }}
+                                </span>
+                            {% else %}
+                                <span class="badge-stock stock-empty">
+                                    <i class="fa-solid fa-circle-xmark"></i> {{ p.stock_actual }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Precio de compra-->
+                        <td class="text-end fw-800 text-dark">
+                            S/ {{ p.precio_compra_referencial|floatformat:2 }}
+                        </td>
+
+                        <!-- Precio de centa Referencial -->
+                        <td class="text-end fw-800 text-dark">
+                            S/ {{ p.precio_venta_referencial|floatformat:2 }}
+                        </td>
+
+                        <!-- Acciones -->
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="#" class="action-icon" title="Editar">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <a href="#" class="action-icon" title="Ver Historial / Kardex">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="fa-solid fa-boxes-packing fa-4x text-muted opacity-25 mb-3"></i>
+                            <p class="text-muted">No hay productos en el inventario actual.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

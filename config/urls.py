@@ -1,0 +1,70 @@
+# config/urls.py
+from django.contrib import admin
+from django.shortcuts import render
+from django.urls import path
+from core import views
+from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', views.seleccionar_empresa, name='seleccionar_empresa'),
+    path('login/', auth_views.LoginView.as_view(template_name='core/login.html'), name='login'),
+    path('logout/', views.salir, name='logout'),
+    path('dashboard/', views.dashboard_analitico, name='dashboard'),
+    path('compras/cargar/', views.cargar_compra, name='cargar_compra'),
+    path('compras/guardar/', views.guardar_compra, name='guardar_compra'),
+    path('finanzas/prestamo/', views.registrar_prestamo, name='registrar_prestamo'),
+    path('logistica/flete/', views.registrar_flete, name='registrar_flete'),
+    path('ventas/cargar/', views.cargar_venta, name='cargar_venta'),
+    path('ventas/cobranza/<int:cuenta_id>/', views.registrar_cobranza, name='registrar_cobranza'),
+    path('dashboard/', views.dashboard_analitico, name='dashboard'),
+    path('sistema/eliminar/<int:pk>/', views.eliminar_comprobante, name='eliminar_comprobante'),
+    path('operaciones/devolucion/', views.registrar_devolucion, name='registrar_devolucion'),
+    path('sistema/validar-sunat/<int:comprobante_id>/', views.validar_sunat, name='validar_sunat'),
+    path('sistema/trazabilidad/', views.lista_comprobantes, name='lista_comprobantes'),
+    path('ventas/configurar-cuotas/<int:cuenta_id>/', views.configurar_cuotas, name='configurar_cuotas'),
+    path('sistema/editar-comprobante/<int:pk>/', views.editar_comprobante, name='editar_comprobante'),
+    path('finanzas/transferencia/', views.transferir_moneda, name='transferir_moneda'),
+    path('mantenimiento/entidades/', views.lista_entidades, name='lista_entidades'),
+    path('mantenimiento/entidades/nueva/', views.crear_entidad, name='crear_entidad'),
+    path('mantenimiento/productos/', views.lista_productos, name='lista_productos'),
+    path('mantenimiento/categorias/', views.lista_categorias, name='lista_categorias'),
+    path('finanzas/movimientos/', views.lista_movimientos, name='lista_movimientos'),
+    path('finanzas/gastos/', views.lista_gastos, name='lista_gastos'),
+    path('sistema/tipo-cambio/', views.lista_tipo_cambio, name='lista_tipo_cambio'),
+    path('sistema/auditoria/', views.lista_auditoria, name='lista_auditoria'),
+    path('finanzas/prestamos/lista/', views.lista_prestamos, name='lista_prestamos'),
+    path('ventas/guardar/', views.guardar_venta, name='guardar_venta'),
+    path('finanzas/pago/<int:pk>/', views.registrar_pago_comprobante, name='registrar_pago_comprobante'),
+    path('retenciones/cargar/', views.cargar_retencion, name='cargar_retencion'),
+    path('retenciones/guardar/', views.guardar_retencion, name='guardar_retencion'),
+    path('compras/manual/', views.registrar_compra_manual, name='registrar_compra_manual'),
+    path('ventas/manual/', views.registrar_venta_manual, name='registrar_venta_manual'),
+    path('finanzas/prestamos/pagar/<int:pk>/', views.pagar_prestamo, name='pagar_prestamo'),
+    path('finanzas/cronograma/', views.cronograma_vencimientos, name='cronograma_vencimientos'),
+    path('finanzas/prestamos/cuotas/<int:prestamo_id>/', views.configurar_cuotas_prestamo, name='configurar_cuotas_prestamo'),
+    path('finanzas/cuota/pagar/<int:cuota_id>/', views.registrar_pago_cuota, name='registrar_pago_cuota'),
+    path('finanzas/gastos/nuevo/', views.registrar_gasto_manual, name='registrar_gasto_manual'),
+    path('sistema/auditoria-igv/', views.trazabilidad_igv, name='trazabilidad_igv'),
+    path('impuestos/cargar/', views.cargar_documento_sunat, name='cargar_documento_sunat'),
+    path('impuestos/guardar/', views.guardar_documento_sunat, name='guardar_documento_sunat'),
+    path('impuestos/cerrar-mes/', views.cerrar_mes_tributario, name='cerrar_mes_tributario'),
+    path('sistema/auditoria-retenciones/', views.trazabilidad_retenciones, name='trazabilidad_retenciones'),
+    path('impuestos/historial-pagos/', views.lista_pagos_sunat, name='lista_pagos_sunat'),
+    path('sistema/notificaciones/', views.lista_notificaciones, name='lista_notificaciones'),
+    path('sistema/notificaciones/leer-todas/', views.marcar_notificaciones_leidas, name='marcar_notificaciones_leidas'),
+    path('comercial/cotizacion/nueva/', views.registrar_cotizacion, name='registrar_cotizacion'),
+    path('comercial/cotizacion/preview-confirm/', views.preview_antes_de_guardar, name='preview_antes_de_guardar'),
+    path('comercial/cotizacion/finalizar/', views.guardar_cotizacion_final, name='guardar_cotizacion_final'),
+    path('comercial/cotizacion/lista/', views.lista_cotizaciones, name='lista_cotizaciones'),
+    path('comercial/cotizacion/ver/<int:pk>/', views.ver_cotizacion_guardada, name='ver_cotizacion_guardada'),
+    path('comercial/cotizacion/editar/<int:pk>/', views.editar_cotizacion, name='editar_cotizacion'),
+    path('sistema/editar-comprobante/<int:pk>/', views.editar_comprobante, name='editar_comprobante'),
+    path('ventas/manual/preview/', views.preview_venta_manual, name='preview_venta_manual'),
+    path('ventas/manual/guardar/', views.guardar_venta_manual_final, name='guardar_venta_manual_final'),
+    path('ventas/pdf/<int:pk>/', views.ver_pdf_venta_manual, name='ver_pdf_venta_manual'),
+]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

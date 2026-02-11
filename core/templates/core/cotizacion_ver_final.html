@@ -1,0 +1,281 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* 1. CONFIGURACIÓN DE LA PANTALLA (WEB) */
+    .doc-container {
+        background-color: #cbd5e1; /* Fondo gris para resaltar la hoja */
+        padding: 40px 10px;
+        min-height: 100vh;
+        overflow-x: auto; /* PERMITE SCROLL LATERAL EN CELULAR */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* LA HOJA FIJA (A4) */
+    .quotation-sheet {
+        background: white !important;
+        width: 210mm;      /* Ancho fijo de una hoja A4 */
+        min-height: 297mm; /* Alto fijo de una hoja A4 */
+        padding: 15mm !important;
+        margin: 0 auto;
+        color: #000 !important;
+        font-family: Arial, sans-serif; /* Fuente estándar para impresoras */
+        box-shadow: 0 0 10px rgba(0,0,0,0.2); /* Sombra solo en pantalla */
+        box-sizing: border-box;
+    }
+
+    /* ESTILOS ESTRUCTURALES (TABLAS) */
+    .table-layout {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    .border-box {
+        border: 1px solid #000 !important;
+        padding: 10px;
+    }
+
+    /* TABLA DE PRODUCTOS */
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    .items-table th {
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+        padding: 8px;
+        font-size: 12px;
+        background-color: #f1f5f9 !important; /* Gris muy claro */
+    }
+    .items-table td {
+        border-bottom: 1px solid #eee;
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .top-action-bar {
+        width: 210mm; /* Ancho igual a la hoja en PC */
+        max-width: 95%; /* En celulares no se sale de la pantalla */
+        margin-left: auto;
+        margin-right: auto;
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 16px !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 1rem 1.5rem !important;
+    }
+
+    .bg-primary-soft {
+        background-color: rgba(19, 112, 182, 0.1);
+    }
+
+    /* AJUSTE PARA CELULAR (MÓVIL) */
+    @media (max-width: 768px) {
+        .top-action-bar {
+            width: 100% !important; /* Ocupa todo el ancho */
+            flex-direction: row; /* Mantiene los botones al lado del texto */
+            padding: 0.8rem !important;
+        }
+        
+        .info-doc h6 {
+            font-size: 0.85rem; /* Texto un poco más pequeño para que quepa */
+        }
+
+        .action-btns .btn {
+            padding: 8px 12px !important;
+            font-size: 0.75rem !important;
+        }
+    }
+
+    /* 2. CONFIGURACIÓN PARA IMPRESIÓN (PDF) */
+    @media print {
+        /* 1. Forzamos que el body no tenga espacio extra */
+        html, body {
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden; /* Evita que se cree scroll extra */
+        }
+
+        /* 2. El contenedor de la hoja */
+        .quotation-sheet {
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            /* IMPORTANTE: Cambiamos min-height a auto para que no empuje a una 2da hoja */
+            min-height: initial !important; 
+            height: auto !important;
+            margin: 0 !important;
+            padding: 10mm !important; /* Margen interno de seguridad */
+        }
+
+        /* 3. Ajustamos el tamaño del papel en el driver de impresión */
+        @page {
+            size: A4;
+            margin: 0; /* Quitamos márgenes del navegador porque ya los tiene la hoja */
+        }
+
+        /* 4. Ocultamos elementos innecesarios */
+        .sidebar, .navbar, .d-print-none, .btn, .alert, .top-action-bar { 
+            display: none !important; 
+        }
+    }
+
+</style>
+
+<div class="doc-container">
+    
+    <!-- BARRA DE HERRAMIENTAS (NO SE IMPRIME) -->
+    <div class="alert glass-card d-print-none mb-4 d-flex justify-content-between align-items-center top-action-bar shadow-sm">
+        <div class="info-doc">
+            <h6 class="mb-0 fw-800 text-dark">Cotización Finalizada</h6>
+            <span class="badge bg-primary-soft text-primary p-1 px-2 mt-1" style="font-size: 0.7rem;">
+                Nro: {{ c.numero }} <!-- Si es en preview usa {{ datos.numero }} -->
+            </span>
+        </div>
+        <div class="d-flex gap-2 action-btns">
+            <a href="{% url 'lista_cotizaciones' %}" class="btn btn-light border btn-sm px-3 fw-bold">
+                <i class="fa-solid fa-arrow-left"></i> <span class="d-none d-md-inline">Volver</span>
+            </a>
+            <!-- window.print() en celular abre automáticamente la opción de "Guardar como PDF" -->
+            <button onclick="window.print()" class="btn btn-primary btn-sm px-3 fw-bold">
+                <i class="fa-solid fa-file-arrow-down me-1"></i> DESCARGAR <span class="d-none d-md-inline">/ IMPRIMIR</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- LA HOJA CONGELADA -->
+    <div class="quotation-sheet">
+        
+        <!-- CABECERA -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    {% if empresa.logo %}
+                        <img src="{{ empresa.logo.url }}" style="max-height: 80px; margin-bottom: 10px;">
+                    {% endif %}
+                    <div style="font-size: 12px;">
+                        <strong style="font-size: 16px;">{{ empresa.nombre|upper }}</strong><br>
+                        <strong>RUC:</strong> {{ empresa.ruc }}<br>
+                        {{ empresa.direccion|default:"Dirección no registrada" }}<br>
+                        <strong>Telf:</strong> {{ empresa.telefono|default:"-" }} | <strong>Email:</strong> {{ empresa.correo|default:"-" }}
+                    </div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top;">
+                    <div class="border-box" style="display: inline-block; text-align: center; min-width: 180px;">
+                        <span style="font-size: 12px; font-weight: bold;">COTIZACIÓN NRO.</span><br>
+                        <span style="font-size: 24px; font-weight: bold; color: #1370b6;">{{ c.numero }}</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 13px;">
+                        <strong>FECHA EMISIÓN:</strong> {{ c.fecha|date:"d/m/Y" }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- BLOQUE CLIENTE Y CONDICIONES (CONGELADO EN 2 COLUMNAS) -->
+        <table class="table-layout border-box" style="padding: 0;">
+            <tr>
+                <td style="width: 55%; padding: 15px; border-right: 1px solid #000; vertical-align: top;">
+                    <small style="color: #1370b6; font-weight: bold; text-transform: uppercase;">Datos del Cliente</small>
+                    <div style="font-size: 14px; font-weight: bold; margin: 5px 0;">{{ c.nombre_cliente|upper }}</div>
+                    <div style="font-size: 12px;">
+                        <strong>RUC/DNI:</strong> {{ c.ruc_dni_cliente }}<br>
+                        <strong>Dirección:</strong> {{ c.direccion_cliente|default:"-" }}
+                    </div>
+                </td>
+                <td style="width: 45%; padding: 15px; vertical-align: top; background-color: #f8fafc;">
+                    <small style="color: #1370b6; font-weight: bold; text-transform: uppercase;">Condiciones</small>
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        <strong>Atención:</strong> {{ c.atencion_a|default:"-" }}<br>
+                        <strong>Garantía:</strong> {{ c.garantia }}<br>
+                        <strong>Entrega:</strong> {{ c.tiempo_entrega }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- TABLA DE ITEMS -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="text-align: left;">DESCRIPCIÓN</th>
+                    <th style="width: 60px;">CANT.</th>
+                    <th style="width: 100px;">P. UNIT.</th>
+                    <th style="width: 100px;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in c.detalles.all %}
+                <tr>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td style="text-transform: uppercase;">{{ item.descripcion_libre }}</td>
+                    <td style="text-align: center;">{{ item.cantidad|floatformat:1 }}</td>
+                    <td style="text-align: right;">{{ c.moneda }} {{ item.precio_unitario|floatformat:2 }}</td>
+                    <td style="text-align: right; font-weight: bold;">{{ c.moneda }} {{ item.total_linea|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- TOTALES -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    <div style="font-size: 10px; font-weight: bold; color: #1370b6; text-transform: uppercase; margin-bottom: 8px;">Cuentas Bancarias para Depósito:</div>
+                    {% for b in bancos %}
+                    <div style="margin-bottom: 8px; line-height: 1.2;">
+                        <span style="font-size: 11px; font-weight: bold; color: #334155;">{{ b.banco }} ({{ b.moneda }})</span><br>
+                        <span style="font-size: 10px; color: #64748b;">Nro de Cuenta:</span> <strong style="font-size: 11px;">{{ b.numero_cuenta }}</strong>
+                        {% if b.cci %}
+                        <br><span style="font-size: 10px; color: #64748b;">CCI:</span> <strong style="font-size: 11px;">{{ b.cci }}</strong>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </td>
+                <td style="width: 40%;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr>
+                            <td>SUB TOTAL</td>
+                            <td style="text-align: right;">{{ c.moneda }} {{ subtotal|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-bottom: 1px solid #000; padding-bottom: 5px;">IGV (18%)</td>
+                            <td style="text-align: right; border-bottom: 1px solid #000; padding-bottom: 5px;">{{ c.moneda }} {{ igv|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="font-size: 18px; font-weight: bold; padding-top: 10px;">TOTAL</td>
+                            <td style="text-align: right; font-size: 18px; font-weight: bold; padding-top: 10px; color: #1370b6;">
+                                {{ c.moneda }} {{ c.total|floatformat:2 }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table> 
+
+        <!-- Bloque de Notas Adicionales -->
+        {% if c.notas %}
+        <div style="margin-top: 20px; padding-top: 10px; border-top: 1px dashed #eee;">
+            <div style="font-size: 10px; font-weight: bold; color: #1370b6; text-transform: uppercase; margin-bottom: 5px;">Notas Adicionales:</div>
+            <div style="font-size: 11px; color: #475569; line-height: 1.4; white-space: pre-wrap;">{{ c.notas }}</div>
+        </div>
+        {% endif %}
+        
+        <!-- FOOTER FIJO AL FINAL DE LA HOJA -->
+        <div style="margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+            <p style="font-size: 10px; color: #666; margin-bottom: 0;"> <!-- margin-bottom: 0 es clave -->
+                Vigencia de la oferta: {{ c.validez_dias|default:"5" }} días. <br>
+                Generado por FG Shop.
+            </p>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

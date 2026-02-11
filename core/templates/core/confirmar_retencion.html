@@ -1,0 +1,151 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Badges de estado de conciliación */
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .status-found { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .status-missing { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    .agent-info-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--glass-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-conciliation thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        padding: 15px;
+        border-bottom: 2px solid rgba(0,0,0,0.03);
+    }
+
+    .table-conciliation tbody td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-file-shield text-primary me-2"></i> Conciliación de Retenciones
+            </h3>
+            <p class="text-muted small mb-0">Verifique las facturas vinculadas antes de aplicar el crédito fiscal</p>
+        </div>
+    </div>
+
+    <!-- Alerta Duplicado Soft -->
+    {% if ya_existe %}
+    <div class="alert alert-danger bg-opacity-10 border-0 text-danger rounded-4 d-flex align-items-center p-3 mb-4 shadow-sm">
+        <i class="fa-solid fa-triangle-exclamation fs-3 me-3"></i>
+        <div>
+            <h6 class="fw-bold mb-0">CERTIFICADO YA REGISTRADO</h6>
+            <small>Este documento ({{ datos.serie_numero }}) ya existe en el sistema. No se permite duplicar créditos.</small>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Resumen del Agente -->
+    <div class="agent-info-card shadow-sm mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                <i class="fa-solid fa-building-shield fs-4"></i>
+            </div>
+            <div>
+                <small class="stat-label">Agente de Retención</small>
+                <div class="fw-bold text-dark">{{ datos.nombre_agente }}</div>
+                <small class="text-muted">{{ datos.serie_numero }} | {{ datos.fecha_emision }}</small>
+            </div>
+        </div>
+        <div class="text-end">
+            <small class="stat-label">Total Retención</small>
+            <div class="fw-800 text-primary" style="font-size: 1.5rem; letter-spacing: -1px;">
+                S/ {{ datos.monto_total_retencion|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'guardar_retencion' %}">
+        {% csrf_token %}
+        <div class="glass-card p-0 overflow-hidden mb-4 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-conciliation mb-0">
+                    <thead>
+                        <tr>
+                            <th>Factura Referenciada</th>
+                            <th>Monto Retenido</th>
+                            <th>T.C.</th>
+                            <th>Descuento Real</th>
+                            <th>Estado en Sistema</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in lineas %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">{{ l.factura_ref }}</div>
+                            </td>
+                            <td>
+                                <span class="text-danger fw-bold">S/ {{ l.monto_pen }}</span>
+                            </td>
+                            <td class="text-muted small">{{ l.tipo_cambio }}</td>
+                            <td>
+                                <div class="fw-800">
+                                    {% if l.factura_id %}- {{ l.monto_moneda_origen }}{% else %}<span class="text-muted">---</span>{% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if l.factura_id %}
+                                    <div class="status-badge status-found">
+                                        <i class="fa-solid fa-link"></i> VINCULADA
+                                    </div>
+                                    <div class="mt-1 small text-muted">Saldo: {{ l.saldo_actual_factura }}</div>
+                                {% else %}
+                                    <div class="status-badge status-missing">
+                                        <i class="fa-solid fa-link-slash"></i> NO ENCONTRADA
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <a href="{% url 'cargar_retencion' %}" class="btn btn-light rounded-3 px-4 fw-bold text-muted">
+                <i class="fa-solid fa-arrow-left me-2"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg rounded-4 px-5 py-3 fw-800 shadow-lg" {% if ya_existe %}disabled{% endif %}>
+                {% if ya_existe %}
+                    <i class="fa-solid fa-lock me-2"></i> Registro Bloqueado
+                {% else %}
+                    <i class="fa-solid fa-check-double me-2"></i> Confirmar y Aplicar Crédito
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

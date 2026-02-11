@@ -1,0 +1,49 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="glass-card border-0 shadow-lg text-center p-5">
+                <!-- Icono de Advertencia Gigante -->
+                <div class="mb-4">
+                    <i class="fa-solid fa-triangle-exclamation text-danger fa-4x animate__animated animate__pulse animate__infinite"></i>
+                </div>
+                
+                <h3 class="fw-800 text-dark mb-3">¿Confirmar Eliminación?</h3>
+                <p class="text-muted">
+                    Estás a punto de eliminar el comprobante: <br>
+                    <strong class="text-dark">{{ obj.codigo_factura }}</strong>
+                </p>
+
+                <div class="alert alert-danger small text-start mb-4">
+                    <i class="fa-solid fa-circle-info me-2"></i> 
+                    <strong>Impacto del Borrado Atómico (RF-24):</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Se anularán las deudas asociadas.</li>
+                        <li>Se revertirá el stock de los productos.</li>
+                        <li>Esta acción quedará registrada en el <strong>Log de Auditoría</strong>.</li>
+                    </ul>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4 text-start">
+                        <label class="stat-label text-danger fw-bold">Motivo de la Eliminación (Obligatorio)</label>
+                        <textarea name="motivo" class="form-control border-danger bg-danger bg-opacity-5" rows="3" required placeholder="Ej: Error en el cálculo de impuestos o factura anulada por el proveedor..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg fw-bold shadow">
+                            <i class="fa-solid fa-trash-can me-2"></i> Eliminar Permanentemente
+                        </button>
+                        <a href="{% url 'lista_comprobantes' %}" class="btn btn-light rounded-3">
+                            No, cancelar y volver
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

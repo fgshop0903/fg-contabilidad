@@ -1,0 +1,308 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<!-- Select2 CSS Custom -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    /* Estilización de Select2 para estilo Fintech */
+    .select2-container--default .select2-selection--single {
+        background-color: rgba(255, 255, 255, 0.5) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        height: 40px !important;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: var(--text-dark) !important;
+        font-size: 0.85rem;
+        padding-left: 12px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+    }
+    .select2-dropdown {
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        overflow: hidden;
+    }
+
+    /* Inputs Estilo Fintech */
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    .form-control-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .section-label::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    /* Panel de Cliente Estilizado */
+    .client-panel {
+        background: rgba(19, 112, 182, 0.03);
+        border: 1px dashed rgba(19, 112, 182, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    .table-modern thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        padding: 12px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado Pro -->
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary) 0%, #035391 100%) !important;">
+                            <i class="fa-solid fa-file-signature fs-3"></i>
+                        </div>
+                        <div>
+                            <h3 class="fw-800 text-dark mb-0" style="letter-spacing: -1.5px;">Generar Cotización</h3>
+                            <p class="text-muted small mb-0">Propuesta comercial profesional para clientes</p>
+                        </div>
+                    </div>
+                    <div class="text-md-end">
+                        <span class="text-muted small d-block fw-bold text-uppercase">Nro. Sugerido</span>
+                        <span class="fw-800 text-primary fs-4">{{ sugerencia }}</span>
+                    </div>
+                </div>
+
+                <form method="POST" id="formCot">
+                    {% csrf_token %}
+
+                    <!-- SECCIÓN 1: CONFIGURACIÓN -->
+                    <div class="section-label">1. Configuración del Documento</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Número de Cotización</label>
+                            <input type="text" name="numero_cotizacion" class="form-control form-control-fintech fw-800 text-primary" value="{{ request.session.temp_cotizacion.numero_cotizacion|default:sugerencia }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Moneda</label>
+                            <select name="moneda" class="form-select form-control-fintech">
+                                <option value="PEN" {% if request.session.temp_cotizacion.moneda == 'PEN' %}selected{% endif %}>🇵🇪 Soles (PEN)</option>
+                                <option value="USD" {% if request.session.temp_cotizacion.moneda == 'USD' %}selected{% endif %}>💵 Dólares (USD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Atención a (Contacto directo)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                    <i class="fa-solid fa-user-tag text-muted"></i>
+                                </span>
+                                <input type="text" name="atencion_a" class="form-control form-control-fintech border-start-0" value="{{ request.session.temp_cotizacion.atencion_a|default:'' }}" placeholder="Nombre del encargado..." style="border-radius: 0 12px 12px 0;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: CLIENTE -->
+                    <div class="client-panel mb-5">
+                        <label class="small fw-800 text-primary text-uppercase mb-3 d-block">
+                            <i class="fa-solid fa-address-card me-2"></i>Información del Cliente
+                        </label>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <input type="text" name="ruc_dni" class="form-control form-control-fintech" placeholder="RUC / DNI" value="{{ request.session.temp_cotizacion.ruc_dni|default:'' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" name="razon_social" class="form-control form-control-fintech" placeholder="Razón Social / Nombre Completo" value="{{ request.session.temp_cotizacion.razon_social|default:'' }}" required>
+                            </div>
+                            <div class="col-md-5">
+                                <input type="text" name="direccion_cliente" class="form-control form-control-fintech" placeholder="Dirección de envío o fiscal (Opcional)" value="{{ request.session.temp_cotizacion.direccion_cliente|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 3: TABLA DE PRODUCTOS -->
+                    <div class="section-label">2. Productos y Servicios</div>
+                    <div class="table-responsive">
+                        <table class="table table-modern align-middle" id="tablaItems">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Descripción del Ítem</th>
+                                    <th style="width: 15%; text-align: center;">Cantidad</th>
+                                    <th style="width: 20%; text-align: right;">Precio Unit.</th>
+                                    <th style="width: 10%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                                {% if request.session.temp_cotizacion.items %}
+                                    <!-- Si hay items en la sesión (EDICIÓN), los dibujamos todos -->
+                                    {% for item in request.session.temp_cotizacion.items %}
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="prod_id[]" class="form-select select-prod-cot mb-1">
+                                                <option value="">-- Seleccionar de Inventario --</option>
+                                                {% for p in mis_productos %}
+                                                    <option value="{{ p.id }}" {% if p.id|slugify == item.prod_id|slugify %}selected{% endif %}>
+                                                        {{ p.nombre_interno }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="text" name="desc[]" class="form-control form-control-sm" value="{{ item.descripcion }}" required>
+                                        </td>
+                                        <!-- Cantidad -->
+                                        <td>
+                                            <input type="number" step="0.01" name="cant[]" class="form-control" 
+                                                value="{{ item.cantidad|stringformat:'.2f' }}" required>
+                                        </td>
+
+                                        <!-- Precio -->
+                                        <td>
+                                            <input type="number" step="0.01" name="prec[]" class="form-control" 
+                                                value="{{ item.precio|stringformat:'.2f' }}" required>
+                                        </td>
+                                        <!--<td><input type="number" step="0.01" name="cant[]" class="form-control" value="{{ item.cantidad }}" required></td>
+                                        <td><input type="number" step="0.01" name="prec[]" class="form-control" value="{{ item.precio }}" required></td>-->
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-link text-danger" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Si NO hay nada (NUEVA), dibujamos una fila vacía por defecto -->
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="prod_id[]" class="form-select select-prod-cot mb-1">
+                                                <option value="">-- Seleccionar de Inventario --</option>
+                                                {% for p in mis_productos %}<option value="{{ p.id }}">{{ p.nombre_interno }}</option>{% endfor %}
+                                            </select>
+                                            <input type="text" name="desc[]" class="form-control form-control-sm" placeholder="Descripción..." required>
+                                        </td>
+                                        <td><input type="number" step="0.01" name="cant[]" class="form-control" placeholder="0.00" required></td>
+                                        <td><input type="number" step="0.01" name="prec[]" class="form-control" placeholder="0.00" required></td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-link text-danger" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold mt-2" onclick="agregarFila()" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-plus-circle me-1" ></i> Añadir Ítem Adicional
+                    </button>
+
+                    <!-- SECCIÓN 4: CONDICIONES -->
+                    <div class="section-label mt-5">3. Condiciones Comerciales</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Garantía</label>
+                            <input type="text" name="garantia" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.garantia|default:'12 meses' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Tiempo de Entrega</label>
+                            <input type="text" name="tiempo_entrega" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.tiempo_entrega|default:'Inmediato' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">Validez de Oferta (Días)</label>
+                            <input type="number" name="validez" class="form-control form-control-fintech" value="{{ request.session.temp_cotizacion.validez|default:'5' }}">
+                        </div>
+                        <div class="col-12 mt-3">
+                            <label class="form-label small fw-bold text-muted">Notas Adicionales</label>
+                            <textarea name="notas" class="form-control form-control-fintech" rows="2" placeholder="Ej: No incluye instalación ni viáticos fuera de Lima...">{{ request.session.temp_cotizacion.notas|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- FOOTER ACCIONES -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mt-5 pt-4 border-top">
+                        <a href="{% url 'lista_cotizaciones' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                            <i class="fa-solid fa-chevron-left me-1"></i> Cancelar y Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary px-5 py-3 rounded-3 shadow fw-bold order-1 order-md-2 w-100 w-md-auto" style="background: linear-gradient(135deg, var(--primary) 0%, #035391 100%) !important;">
+                            <i class="fa-solid fa-file-pdf me-2"></i> Vista previa y Generar PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    function initSelect2() {
+        $('.select-prod-cot').select2({
+            width: '100%',
+            placeholder: "-- Seleccionar producto del catálogo --",
+            dropdownAutoWidth: true
+        });
+    }
+
+    $(document).ready(function() {
+        initSelect2();
+    });
+
+    function agregarFila() {
+        // Destruir Select2 para clonar limpio
+        $('.select-prod-cot').select2('destroy');
+        
+        const tbody = document.getElementById('tbody');
+        const filaOriginal = document.querySelector('.item-row');
+        const nuevaFila = filaOriginal.cloneNode(true);
+        
+        // Limpiar inputs de la nueva fila
+        nuevaFila.querySelectorAll('input').forEach(i => i.value = '');
+        
+        tbody.appendChild(nuevaFila);
+        
+        // Reinicializar Select2
+        initSelect2();
+    }
+
+    function eliminarFila(btn) {
+        const tbody = document.getElementById('tbody');
+        if (tbody.querySelectorAll('.item-row').length > 1) {
+            btn.closest('tr').remove();
+        }
+    }
+
+    // Llenar descripción automáticamente al elegir del catálogo
+    $(document).on('change', '.select-prod-cot', function() {
+        const text = $(this).find('option:selected').text();
+        if(text && !text.includes('--')) {
+            $(this).closest('td').find('input[name="desc[]"]').val(text);
+        }
+    });
+</script>
+{% endblock %}

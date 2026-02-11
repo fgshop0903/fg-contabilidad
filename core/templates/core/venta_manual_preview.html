@@ -1,0 +1,73 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container my-4">
+    <div class="alert alert-success d-flex justify-content-between align-items-center d-print-none shadow-sm border-0">
+        <div><i class="fas fa-check-circle me-2"></i> <strong>VERIFIQUE SU VENTA.</strong> El stock se descontará al finalizar.</div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'registrar_venta_manual' %}" class="btn btn-light btn-sm border">Corregir</a>
+            <form method="POST" action="{% url 'guardar_venta_manual_final' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-sm fw-bold">FINALIZAR Y REGISTRAR VENTA</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- HOJA FORMAL -->
+    <div class="mx-auto bg-white shadow-lg p-5" style="max-width: 850px; min-height: 1000px; color: #1a1a1a; -webkit-print-color-adjust: exact;">
+        <div class="row mb-4">
+            <div class="col-8">
+                {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px; margin-bottom: 15px;">{% endif %}
+                <h4 class="fw-bold mb-0" style="color: #0E6CB1;">{{ empresa.nombre|upper }}</h4>
+                <div class="small text-muted">RUC: {{ empresa.ruc }}<br>{{ empresa.direccion }}</div>
+            </div>
+            <div class="col-4 text-center">
+                <div class="p-3" style="border: 2px solid #28a745; border-radius: 10px;">
+                    <h5 class="mb-1 fw-bold text-success">{% if c.modo == 'oficial' %}BOLETA DE VENTA{% else %}NOTA DE VENTA{% endif %}</h5>
+                    <h3 class="mb-0 fw-bold">{{ c.serie_numero }}</h3>
+                </div>
+                <div class="mt-2 small fw-bold">Fecha: {{ c.fecha }}</div>
+            </div>
+        </div>
+
+        <div class="p-3 rounded-3 mb-4" style="background: #f8f9fa; border-left: 4px solid #28a745;">
+            <p class="mb-1"><strong>Cliente:</strong> {{ c.razon_social|upper }}</p>
+            <p class="mb-0"><strong>RUC/DNI:</strong> {{ c.ruc_dni }}</p>
+        </div>
+
+        <table class="table table-bordered">
+            <thead class="bg-light">
+                <tr class="small text-center"><th>ITEM</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>P. UNIT.</th><th>TOTAL</th></tr>
+            </thead>
+            <tbody>
+                {% for item in c.items %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td class="small">{{ item.descripcion|upper }}</td>
+                    <td class="text-center">{{ item.cantidad }}</td>
+                    <td class="text-end">{{ item.precio|floatformat:2 }}</td>
+                    <td class="text-end fw-bold">{{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="row justify-content-end mt-4">
+            <div class="col-5">
+                <table class="table table-sm table-borderless">
+                    {% if c.modo == 'oficial' %}
+                    <tr><td class="text-end">SUB TOTAL:</td><td class="text-end">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</td></tr>
+                    <tr><td class="text-end">IGV (18%):</td><td class="text-end">{{ c.moneda }} {{ c.igv|floatformat:2 }}</td></tr>
+                    {% endif %}
+                    <tr class="border-top border-dark"><td class="text-end fw-bold">TOTAL:</td><td class="text-end fw-bold fs-5 text-success">{{ c.moneda }} {{ c.total|floatformat:2 }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-5 small text-muted border-top pt-3">
+            <strong>CUENTAS:</strong> 
+            {% for b in bancos %}{{ b.banco }}: {{ b.numero_cuenta }} | {% endfor %}
+            <p class="mt-2 italic">Este es un comprobante de control interno emitido por FG SHOP.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

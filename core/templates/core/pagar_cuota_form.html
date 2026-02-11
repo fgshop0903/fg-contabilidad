@@ -1,0 +1,168 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para el "Hero" del monto */
+    .payment-hero {
+        background: var(--primary-soft);
+        border-radius: 24px;
+        padding: 40px 20px;
+        text-align: center;
+        border: 1px solid rgba(19, 112, 182, 0.1);
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Decoración sutil para el Hero */
+    .payment-hero::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+        pointer-events: none;
+    }
+
+    .amount-large {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: var(--primary);
+        letter-spacing: -2px;
+        margin-bottom: 0;
+        line-height: 1;
+    }
+
+    .source-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .source-label::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    .form-select-fintech {
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+    }
+
+    .installment-badge {
+        background: white;
+        padding: 6px 16px;
+        border-radius: 100px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: var(--text-dark);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado -->
+                <div class="text-center mb-4">
+                    <h5 class="fw-800 text-dark mb-1">Confirmación de Pago</h5>
+                    <p class="text-muted small">Revisión de cuota y selección de origen</p>
+                </div>
+
+                <!-- Hero del Monto -->
+                <div class="payment-hero shadow-sm">
+                    <div class="installment-badge border">
+                        CUOTA N° {{ cuota.numero_cuota }}
+                    </div>
+                    <div class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 1px;">Monto a pagar</div>
+                    <h2 class="amount-large">
+                        <small style="font-size: 1.2rem; vertical-align: middle;">S/</small> 
+                        {{ cuota.monto|floatformat:2 }}
+                    </h2>
+                    <div class="mt-3">
+                        <span class="badge bg-white text-danger border px-3 py-2 rounded-pill small">
+                            <i class="fa-solid fa-calendar-day me-1"></i> Vence: {{ cuota.fecha_vencimiento|date:"d M, Y" }}
+                        </span>
+                    </div>
+                    <div class="mt-3 small text-muted">
+                        <i class="fa-solid fa-building me-1"></i> {{ origen|truncatechars:35 }}
+                    </div>
+                </div>
+
+                <!-- Formulario -->
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="source-label">Método de Liquidación</div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Caja (Efectivo)</label>
+                        <select name="caja_id" class="form-select form-select-fintech mb-3">
+                            <option value="">-- No usar efectivo --</option>
+                            {% for c in cajas %}
+                            <option value="{{ c.id }}">💵 {{ c.nombre }} (Saldo: S/ {{ c.saldo_actual }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">Cuenta Bancaria (Transferencia)</label>
+                        <select name="banco_id" class="form-select form-select-fintech" required>
+                            <option value="">-- Seleccionar Banco --</option>
+                            {% for b in bancos %}
+                            <option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }}) - {{ b.numero_cuenta|slice:"-4:" }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info border-0 bg-light p-3 mb-4 rounded-3 d-flex align-items-start gap-2">
+                        <i class="fa-solid fa-circle-info mt-1"></i>
+                        <small class="text-muted">El saldo se descontará automáticamente de la cuenta seleccionada y el estado de la cuota pasará a <strong>PAGADO</strong>.</small>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold mb-3">
+                            <i class="fa-solid fa-lock me-2"></i> Procesar Pago Seguro
+                        </button>
+                        
+                        <a href="{% url 'cronograma_vencimientos' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
+                            <i class="fa-solid fa-xmark me-1"></i> Cancelar Operación
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer del Formulario -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1"></i>
+                <small class="fw-bold">Transacción protegida por FG Network Audit System</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

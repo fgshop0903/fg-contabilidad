@@ -1,0 +1,181 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos dinámicos para el tipo de operación */
+    .op-header-compra { background: linear-gradient(135deg, #1370b6 0%, #0e5a94 100%); }
+    .op-header-venta { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+
+    .transaction-hero {
+        border-radius: 20px 20px 0 0;
+        padding: 30px;
+        text-align: center;
+        color: white;
+    }
+
+    /* Inputs de Monto Estilo Fintech */
+    .amount-input-lg {
+        font-size: 2rem !important;
+        font-weight: 800 !important;
+        text-align: center;
+        border: 2px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 16px !important;
+        color: var(--text-dark);
+    }
+
+    .itf-input {
+        border: 2px solid rgba(19, 112, 182, 0.2);
+        background: rgba(19, 112, 182, 0.03);
+        border-radius: 12px;
+        text-align: center;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    /* Panel de origen/destino */
+    .source-panel {
+        background: #f8fafc;
+        border: 1px dashed var(--glass-border);
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    .form-select-fintech {
+        background: white;
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    /* Caja de Tipo de Cambio */
+    .tc-box {
+        background: rgba(19, 112, 182, 0.05);
+        border-left: 4px solid var(--primary);
+        border-radius: 8px;
+        padding: 15px;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-10">
+            <div class="glass-card p-0 overflow-hidden border-0 shadow-lg">
+                
+                <!-- CABECERA DINÁMICA (HERO) -->
+                <div class="transaction-hero {% if comprobante.operacion == 'Compra' %}op-header-compra{% else %}op-header-venta{% endif %}">
+                    <div class="mb-2 opacity-75 text-uppercase fw-bold small" style="letter-spacing: 2px;">
+                        {% if comprobante.operacion == 'Compra' %}Orden de Pago{% else %}Registro de Cobranza{% endif %}
+                    </div>
+                    <div class="display-5 fw-800 mb-1">
+                        <small style="font-size: 1.5rem;">{{ comprobante.moneda }}</small> 
+                        {{ cuenta.saldo_pendiente|default:"0.00"|floatformat:2 }}
+                    </div>
+                    <div class="opacity-75 small fw-medium">
+                        <i class="fa-solid fa-file-invoice me-1"></i> {{ comprobante.serie }}-{{ comprobante.numero }} | {{ comprobante.entidad.nombre_razon_social|truncatechars:30 }}
+                    </div>
+                </div>
+
+                <div class="p-4 p-md-5 bg-white bg-opacity-50">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <!-- SECCIÓN 1: MONTOS -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label small fw-800 text-muted text-uppercase">Monto a Liquidar</label>
+                                <input type="number" step="0.01" name="monto" class="form-control amount-input-lg shadow-sm" 
+                                       value="{{ cuenta.saldo_pendiente }}" max="{{ cuenta.saldo_pendiente }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-800 text-primary text-uppercase">Comisión ITF</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-transparent border-0 fw-bold text-primary">S/</span>
+                                    <input type="number" step="0.01" name="itf_monto" class="form-control itf-input" value="0.00">
+                                </div>
+                                <div class="text-center mt-1" style="font-size: 0.6rem; color: #94a3b8;">Ref: 0.05 por cada 1000</div>
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 2: ORIGEN/DESTINO -->
+                        <div class="source-panel mb-4">
+                            <label class="form-label small fw-800 text-muted text-uppercase mb-3">
+                                <i class="fa-solid fa-building-columns me-2"></i>Gestión de Tesorería
+                            </label>
+                            
+                            <div class="mb-3">
+                                <select name="caja_id" class="form-select form-select-fintech mb-2">
+                                    <option value="">-- Usar Caja (Efectivo) --</option>
+                                    {% for c in cajas %}
+                                    <option value="{{ c.id }}">💵 {{ c.nombre }} (Saldo: {{ c.moneda }} {{ c.saldo_actual|floatformat:2 }})</option>
+                                    {% endfor %}
+                                </select>
+                                
+                                <select name="banco_id" class="form-select form-select-fintech">
+                                    <option value="">-- Usar Cuenta Bancaria --</option>
+                                    {% for b in bancos %}
+                                    <option value="{{ b.id }}">🏦 {{ b.banco }} - {{ b.numero_cuenta|slice:"-4:" }} (Saldo: {{ b.moneda }} {{ b.saldo_actual|floatformat:2 }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="small text-muted" style="font-size: 0.7rem;">
+                                <i class="fa-solid fa-circle-info me-1"></i> El ITF se aplicará únicamente si selecciona una cuenta bancaria.
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 3: REFERENCIA -->
+                        <div class="mb-4">
+                            <label class="form-label small fw-800 text-muted text-uppercase">Referencia / Nota de Pago</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                    <i class="fa-solid fa-pen-to-square text-muted"></i>
+                                </span>
+                                <input type="text" name="referencia" class="form-control form-select-fintech border-start-0" 
+                                       placeholder="Ej: Transferencia BCP N° 123456..." style="border-radius: 0 12px 12px 0;">
+                            </div>
+                        </div>
+
+                        <!-- SECCIÓN 4: TIPO DE CAMBIO (Si aplica) -->
+                        {% if comprobante.moneda == 'USD' %}
+                        <div class="tc-box mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0 small fw-800 text-primary text-uppercase">
+                                    <i class="fa-solid fa-arrows-rotate me-1"></i> Ajuste Diferencia de Cambio
+                                </label>
+                                <span class="badge bg-white text-primary border rounded-pill">Factura: S/ {{ comprobante.tipo_cambio }}</span>
+                            </div>
+                            <div class="input-group shadow-sm">
+                                <span class="input-group-text bg-white fw-bold">T.C. HOY: S/</span>
+                                <input type="number" step="0.001" name="tipo_cambio_pago" class="form-control fw-bold" value="3.750" required>
+                            </div>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="tipo_cambio_pago" value="1.000">
+                        {% endif %}
+
+                        <!-- BOTÓN DE ACCIÓN -->
+                        <button type="submit" class="btn w-100 text-white fw-800 py-3 rounded-4 shadow shadow-sm transition-all" 
+                                style="background-color: {% if comprobante.operacion == 'Compra' %}#1370b6{% else %}#10b981{% endif %}; font-size: 1.1rem; border: none;">
+                            <i class="fa-solid fa-shield-check me-2"></i> Confirmar Movimiento
+                        </button>
+                        
+                        <div class="text-center mt-4">
+                            <a href="{% url 'lista_comprobantes' %}" class="text-muted text-decoration-none small fw-bold">
+                                <i class="fa-solid fa-chevron-left me-1"></i> Volver sin procesar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- FOOTER DE SEGURIDAD -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-lock me-1"></i>
+                <small class="fw-bold text-uppercase" style="font-size: 0.6rem; letter-spacing: 1px;">Transacción Segura - Registro en Libro Caja y Bancos</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

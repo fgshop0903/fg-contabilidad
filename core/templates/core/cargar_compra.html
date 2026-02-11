@@ -1,0 +1,155 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Contenedor de carga animado */
+    .upload-area {
+        border: 2px dashed rgba(19, 112, 182, 0.3);
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.4);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .upload-area:hover {
+        border-color: var(--primary);
+        background: rgba(19, 112, 182, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 15px;
+        opacity: 0.8;
+    }
+
+    /* Ocultar el input original pero mantenerlo funcional */
+    .file-input-hidden {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .file-name-display {
+        margin-top: 15px;
+        font-weight: 600;
+        color: var(--primary);
+        display: none; /* Se muestra con JS */
+    }
+
+    /* Alert Soft Style */
+    .alert-soft-danger {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border-radius: 12px;
+    }
+
+    .btn-process {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(19, 112, 182, 0.2);
+    }
+
+    .btn-process:hover {
+        background: #105d98;
+        transform: scale(1.02);
+        box-shadow: 0 6px 20px rgba(19, 112, 182, 0.3);
+    }
+</style>
+
+<div class="dashboard-container" style="max-width: 800px; margin: 0 auto;">
+    <!-- Encabezado -->
+    <div class="text-center mb-5">
+        <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+            <i class="fa-solid fa-file-import fs-3"></i>
+        </div>
+        <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">Cargar Comprobante</h3>
+        <p class="text-muted">Sube tus archivos XML o PDF para procesamiento automático</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-soft-danger d-flex align-items-center mb-4" role="alert">
+        <i class="fa-solid fa-circle-exclamation fs-5 me-3"></i>
+        <div><strong>Atención:</strong> {{ error }}</div>
+    </div>
+    {% endif %}
+
+    <div class="glass-card p-4 shadow-sm">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <div class="upload-area" id="dropZone">
+                    <input type="file" name="documento" class="file-input-hidden" id="fileInput" accept=".xml, .pdf" required>
+                    <div class="upload-icon">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark">Arrastra o selecciona un archivo</h5>
+                    <p class="text-muted small">Formatos permitidos: XML (Factura Electrónica) o PDF</p>
+                    
+                    <!-- Contenedor para mostrar el nombre del archivo seleccionado -->
+                    <div id="fileName" class="file-name-display animate__animated animate__fadeIn">
+                        <i class="fa-solid fa-file-code me-2"></i><span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-process">
+                    <i class="fa-solid fa-gear me-2"></i> Procesar Comprobante
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tips de ayuda abajo -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="d-flex align-items-start gap-3 p-3">
+                <i class="fa-solid fa-bolt text-warning mt-1"></i>
+                <small class="text-muted"><strong>Procesamiento rápido:</strong> El sistema extraerá automáticamente RUC, montos e impuestos del XML.</small>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex align-items-start gap-3 p-3">
+                <i class="fa-solid fa-shield-halved text-success mt-1"></i>
+                <small class="text-muted"><strong>Seguridad:</strong> Validamos la firma digital del XML para asegurar que el documento es legítimo.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script simple para mejorar la UX al seleccionar archivo -->
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDiv = document.getElementById('fileName');
+    const fileNameSpan = fileNameDiv.querySelector('span');
+    const dropZone = document.getElementById('dropZone');
+
+    fileInput.addEventListener('change', function(e) {
+        if (this.files && this.files.length > 0) {
+            const name = this.files[0].name;
+            fileNameSpan.textContent = name;
+            fileNameDiv.style.display = 'block';
+            dropZone.style.borderColor = 'var(--primary)';
+            dropZone.style.background = 'rgba(19, 112, 182, 0.03)';
+        }
+    });
+</script>
+
+{% endblock %}

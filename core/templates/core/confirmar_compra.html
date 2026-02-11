@@ -1,0 +1,252 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para badges de validación SUNAT */
+    .badge-sunat {
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sunat-aceptado { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .sunat-rechazado { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    /* Barra de resumen superior */
+    .summary-bar {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--glass-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    /* Alerta Soft para Escudo Tributario */
+    .escudo-box {
+        background: rgba(30, 41, 59, 0.03);
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    .escudo-box:has(.form-check-input:checked) {
+        background: rgba(19, 112, 182, 0.05);
+        border-color: var(--primary);
+    }
+
+    /* Tabla de ítems refinada */
+    .table-review thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        border-bottom: 2px solid rgba(0,0,0,0.03);
+        padding: 15px;
+    }
+
+    .table-review tbody td {
+        padding: 20px 15px;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+        vertical-align: top;
+    }
+
+    .mapping-select {
+        border-radius: 10px;
+        font-size: 0.85rem;
+        padding: 8px;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .sku-input {
+        background: rgba(19, 112, 182, 0.03);
+        border: 1px dashed var(--primary);
+        font-weight: 600;
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado y Validación -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">Revisión de Comprobante</h3>
+            <p class="text-muted small mb-0">Verifique la clasificación de los productos antes de procesar el ingreso</p>
+        </div>
+        <div class="badge-sunat {% if estado_sunat == 'ACEPTADO' %}sunat-aceptado{% else %}sunat-rechazado{% endif %}">
+            <i class="fa-solid {% if estado_sunat == 'ACEPTADO' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+            VALIDACIÓN SUNAT: {{ estado_sunat }}
+        </div>
+    </div>
+
+    <!-- Barra de Resumen Rápido -->
+    <div class="summary-bar shadow-sm">
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3">
+                <i class="fa-solid fa-building-user fs-4"></i>
+            </div>
+            <div>
+                <small class="stat-label">Proveedor</small>
+                <div class="fw-bold">{{ proveedor.nombre_razon_social }}</div>
+            </div>
+        </div>
+        <div class="text-end">
+            <small class="stat-label">Total Documento</small>
+            <div class="fw-800 text-primary" style="font-size: 1.5rem; letter-spacing: -1px;">
+                {{ datos.moneda }} {{ datos.total|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'guardar_compra' %}">
+        {% csrf_token %}
+
+        <div class="glass-card p-4 shadow-sm mb-4">
+            
+            <!-- ALERTAS CRÍTICAS -->
+            {% if ya_existe %}
+            <div class="alert alert-danger bg-opacity-10 border-0 text-danger rounded-4 d-flex align-items-center p-3 mb-4">
+                <i class="fa-solid fa-ban fs-3 me-3"></i>
+                <div>
+                    <h6 class="fw-bold mb-0">DOCUMENTO DUPLICADO</h6>
+                    <small>Este comprobante ya existe en el sistema. No se permite el registro doble.</small>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if datos.moneda == 'USD' %}
+            <div class="alert alert-primary bg-opacity-10 border-0 text-primary rounded-4 d-flex align-items-center justify-content-between p-3 mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-coins fs-3 me-3"></i>
+                    <div>
+                        <h6 class="fw-bold mb-0">Compra en Dólares</h6>
+                        <small>Ingrese T.C. para costeo de inventario:</small>
+                    </div>
+                </div>
+                <input type="number" step="0.001" name="tipo_cambio" class="form-control w-auto fw-bold border-primary" style="border-radius: 10px;" value="3.436" required>
+            </div>
+            {% else %}
+            <input type="hidden" name="tipo_cambio" value="1.000">
+            {% endif %}
+
+            <!-- SECCIÓN ESCUDO TRIBUTARIO -->
+            <div class="escudo-box d-flex align-items-center justify-content-between mb-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-dark bg-opacity-10 rounded-3 p-2 text-dark">
+                        <i class="fa-solid fa-shield-halved fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">¿Esta compra es "Escudo Tributario"?</h6>
+                        <small class="text-muted">Solo se usará el IGV a favor. No afecta utilidad real ni stock físico.</small>
+                    </div>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="es_escudo" id="checkEscudo" style="width: 3.5rem; height: 1.7rem; cursor: pointer;">
+                </div>
+            </div>
+
+            <!-- TABLA DE PRODUCTOS -->
+            <div class="table-responsive mt-2">
+                <table class="table table-review mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Descripción en Comprobante</th>
+                            <th style="width: 10%;">Cant.</th>
+                            <th style="width: 20%;">Clasificación</th>
+                            <th style="width: 35%;">Vincular al Sistema</th>
+                            <th style="width: 12%;">P. Venta Sug.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div class="fw-medium text-dark" style="font-size: 0.85rem;">{{ item.descripcion_xml }}</div>
+                            </td>
+                            <td><span class="badge bg-light text-dark border px-2 py-1">{{ item.cantidad }}</span></td>
+                            <td>
+                                <select name="destino_{{ forloop.counter0 }}" class="form-select mapping-select" onchange="toggleMapping(this, {{ forloop.counter0 }})">
+                                    <option value="inventario">📦 Inventario</option>
+                                    <option value="gasto">🧾 Gasto Directo</option>
+                                    <option value="flete">🚚 Flete Interno</option>
+                                </select>
+                            </td>
+                            <td>
+                                <div id="mapping_area_{{ forloop.counter0 }}">
+                                    {% if item.producto_id %}
+                                        <div class="text-success small fw-bold mb-1"><i class="fa-solid fa-circle-check"></i> Sugerencia encontrada</div>
+                                        <select name="prod_id_{{ forloop.counter0 }}" class="form-select mapping-select border-success bg-success bg-opacity-10">
+                                            <option value="{{ item.producto_id }}">{{ item.nombre_sistema|default:item.descripcion_xml }}</option>
+                                            <optgroup label="Cambiar por otro existente:">
+                                                {% for p in mis_productos %}
+                                                <option value="{{ p.id }}">{{ p.nombre_interno }} ({{ p.sku }})</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        </select>
+                                    {% else %}
+                                        <div class="text-warning small fw-bold mb-1"><i class="fa-solid fa-circle-question"></i> No identificado</div>
+                                        <select name="prod_id_{{ forloop.counter0 }}" class="form-select mapping-select border-warning">
+                                            <option value="">-- CREAR COMO PRODUCTO NUEVO --</option>
+                                            {% for p in mis_productos %}
+                                            <option value="{{ p.id }}">{{ p.nombre_interno }} ({{ p.sku }})</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="text" name="sku_{{ forloop.counter0 }}" value="{{ item.sugerencia_sku }}" class="form-control form-control-sm mt-2 sku-input" placeholder="Ingresar nuevo SKU">
+                                    {% endif %}
+                                </div>
+                                <div id="info_extra_{{ forloop.counter0 }}" class="text-muted small d-none p-2 bg-light rounded-3 mt-1">
+                                    <i class="fa-solid fa-circle-info me-1"></i> No afectará stock físico.
+                                </div>
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted" style="border-radius: 8px 0 0 8px;">S/</span>
+                                    <input type="number" step="0.01" name="precio_venta_{{ forloop.counter0 }}" 
+                                        class="form-control fw-bold text-primary" 
+                                        style="border-radius: 0 8px 8px 0;" placeholder="0.00">
+                                </div>
+                                <small class="text-muted" style="font-size: 0.6rem;">PVP Sugerido</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <a href="{% url 'cargar_compra' %}" class="btn btn-light rounded-3 px-4 fw-bold text-muted">
+                <i class="fa-solid fa-arrow-left me-2"></i> Cancelar Carga
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg rounded-4 px-5 py-3 fw-800 shadow-lg" {% if ya_existe %}disabled{% endif %}>
+                {% if ya_existe %}
+                    <i class="fa-solid fa-lock me-2"></i> Bloqueado por Duplicidad
+                {% else %}
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Finalizar e Ingresar Compra
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleMapping(select, index) {
+        const area = document.getElementById('mapping_area_' + index);
+        const info = document.getElementById('info_extra_' + index);
+        if (select.value === 'inventario') {
+            area.classList.remove('d-none');
+            info.classList.add('d-none');
+        } else {
+            area.classList.add('d-none');
+            info.classList.remove('d-none');
+        }
+    }
+</script>
+
+{% endblock %}

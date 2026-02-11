@@ -1,0 +1,266 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos específicos para formularios de registro */
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: rgba(19, 112, 182, 0.1);
+    }
+
+    .input-group-custom {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+
+    .input-group-custom:focus-within {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(19, 112, 182, 0.05);
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .table-items thead th {
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        border: none;
+        padding-bottom: 15px;
+    }
+
+    .item-row {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+
+    .item-row:hover {
+        background: rgba(255, 255, 255, 0.6);
+    }
+
+    .btn-add {
+        border: 2px dashed rgba(19, 112, 182, 0.3);
+        color: var(--primary);
+        background: transparent;
+        border-radius: 12px;
+        padding: 10px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: 0.3s;
+    }
+
+    .btn-add:hover {
+        background: rgba(19, 112, 182, 0.05);
+        border-color: var(--primary);
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-pen-to-square text-primary me-2"></i> Registro Manual
+            </h3>
+            <p class="text-muted small mb-0">Ingreso de compras, importaciones y gastos sin comprobante electrónico</p>
+        </div>
+    </div>
+
+    <form method="POST" id="formCompra">
+        {% csrf_token %}
+        <div class="glass-card mb-4 shadow-sm">
+            <div class="form-section-title">
+                <i class="fa-solid fa-address-card"></i> Información del Proveedor y Documento
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="stat-label">RUC / DNI</label>
+                    <input type="text" name="ruc_dni" class="form-control input-group-custom" placeholder="00000000" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="stat-label">Razón Social</label>
+                    <input type="text" name="razon_social" class="form-control input-group-custom" placeholder="Ej: AliExpress, Amazon, Mercado Libre..." required>
+                </div>
+                <div class="col-md-4">
+                    <label class="stat-label">Tipo de Documento</label>
+                    <select name="tipo_documento" class="form-select input-group-custom" required>
+                        <option value="Recibo">Recibo / Nota de Venta</option>
+                        <option value="Otros">Otros (Invoice Internacional)</option>
+                        <option value="Factura">Factura</option>
+                        <option value="Boleta">Boleta</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="stat-label">Serie y Número / Nro. Orden</label>
+                    <input type="text" name="serie_numero" class="form-control input-group-custom" placeholder="Ej: ORDER-2024-XYZ" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="stat-label">Fecha de Emisión</label>
+                    <input type="date" name="fecha" class="form-control input-group-custom" value="{{ hoy|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="stat-label">Moneda</label>
+                    <select name="moneda" class="form-select input-group-custom" id="monedaSelect">
+                        <option value="PEN">Soles (PEN)</option>
+                        <option value="USD" selected>Dólares (USD)</option>
+                    </select>
+                </div>
+                <div class="col-md-2" id="tipoCambioCol"> <!-- Agregamos este ID -->
+                    <label class="stat-label">Tipo de Cambio</label>
+                    <input type="number" step="0.001" name="tipo_cambio" class="form-control input-group-custom" value="1.00">
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalle de Productos -->
+        <div class="glass-card shadow-sm">
+            <div class="form-section-title">
+                <i class="fa-solid fa-boxes-stacked"></i> Detalle de Ítems e Inventario
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-items" id="tablaItems">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%;">Producto / Descripción</th>
+                            <th style="width: 15%;">Cantidad</th>
+                            <th style="width: 15%;">Pre. Compra Unitario</th>
+                            <th style="width: 15%;">Pre. Venta Unitario</th>
+                            <th style="width: 10%;" class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody">
+                        <tr class="item-row">
+                            <td class="p-3">
+                                <select name="prod_id[]" class="form-select form-select-sm mb-2 rounded-3 border-light shadow-sm">
+                                    <option value="">-- Crear como nuevo producto --</option>
+                                    {% for p in mis_productos %}
+                                    <option value="{{ p.id }}">{{ p.nombre_interno }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="desc[]" class="form-control form-control-sm rounded-3 border-light shadow-sm" placeholder="Nombre o descripción para el reporte" required>
+                            </td>
+                            <td class="p-3">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" name="cant[]" class="form-control rounded-3 border-light shadow-sm" placeholder="0.00" required>
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-light text-muted fw-bold currency-symbol">$</span>
+                                    <input type="number" step="0.01" name="prec[]" class="form-control rounded-3 border-light shadow-sm" placeholder="0.00" required>
+                                </div>
+                            </td>
+                            <td class="p-3">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white border-light text-muted fw-bold currency-symbol">$</span>
+                                    <input type="number" step="0.01" name="prec_venta[]" class="form-control rounded-3 border-light shadow-sm" placeholder="0.00" required>
+                                </div>
+                            </td>
+                            <td class="p-3 text-end">
+                                <button type="button" class="btn btn-action btn-action-delete" onclick="eliminarFila(this)">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <button type="button" class="btn btn-add w-100 mt-2" onclick="agregarFila()">
+                <i class="fa-solid fa-plus-circle me-2"></i> Añadir otro producto a la lista
+            </button>
+        </div>
+
+        <!-- Botón de Acción Final -->
+        <div class="mt-4 text-end">
+            <button type="submit" class="btn btn-primary btn-lg px-5 py-3 rounded-4 shadow-lg fw-800">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i> Guardar Registro de Compra
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const monedaSelect = document.getElementById('monedaSelect');
+        const tipoCambioCol = document.getElementById('tipoCambioCol');
+
+        function actualizarInterfazMoneda() {
+            const moneda = monedaSelect.value;
+            const simbolos = document.querySelectorAll('.currency-symbol');
+
+            // 1. Mostrar/Ocultar Tipo de Cambio
+            if (moneda === 'USD') {
+                tipoCambioCol.style.display = 'block';
+                simbolos.forEach(s => s.textContent = '$');
+            } else {
+                tipoCambioCol.style.display = 'none';
+                simbolos.forEach(s => s.textContent = 'S/');
+            }
+        }
+
+        // Escuchar el cambio en el select
+        monedaSelect.addEventListener('change', actualizarInterfazMoneda);
+
+        // Ejecutar al cargar la página por primera vez
+        actualizarInterfazMoneda();
+    });
+
+    // Modifica tu función agregarFila para que la nueva fila herede el símbolo correcto
+    function agregarFila() {
+        const tbody = document.getElementById('tbody');
+        const originalFila = tbody.querySelector('.item-row');
+        const nuevaFila = originalFila.cloneNode(true);
+        
+        nuevaFila.querySelectorAll('input').forEach(input => input.value = '');
+        nuevaFila.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+        
+        // Asegurar que el símbolo sea el actual del select
+        const monedaActual = document.getElementById('monedaSelect').value;
+        nuevaFila.querySelector('.currency-symbol').textContent = (monedaActual === 'USD') ? '$' : 'S/';
+        
+        tbody.appendChild(nuevaFila);
+    }
+    function eliminarFila(btn) {
+        const tbody = document.getElementById('tbody');
+        // Verificamos que no sea la única fila (para no quedar sin campos)
+        if (tbody.rows.length > 1) {
+            btn.closest('tr').remove();
+        } else {
+            alert("El sistema requiere al menos un producto para registrar la operación.");
+        }
+    }
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos para filas con estados de urgencia */
+    .row-overdue {
+        background-color: rgba(239, 68, 68, 0.05) !important; /* Rojo muy suave */
+        border-left: 4px solid #ef4444 !important;
+    }
+    .row-today {
+        background-color: rgba(245, 158, 11, 0.05) !important; /* Ámbar muy suave */
+        border-left: 4px solid #f59e0b !important;
+    }
+    .row-pending {
+        border-left: 4px solid transparent;
+    }
+
+    /* Badges Soft para el tipo de operación */
+    .badge-soft-success { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .badge-soft-danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+    .badge-soft-primary { background: rgba(19, 112, 182, 0.1); color: #1370b6; border: 1px solid rgba(19, 112, 182, 0.2); }
+    
+    /* Estilo de la tabla maestro */
+    .table-master thead th {
+        background: rgba(248, 250, 252, 0.5);
+        color: #64748b;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 15px;
+        border-bottom: 2px solid rgba(0,0,0,0.03);
+    }
+
+    .table-master tbody td {
+        padding: 18px 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .btn-pay {
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 6px 16px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-pay:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    /* Estilo para botón Cobrar (Azul Fintech) */
+    .btn-collect {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 6px 16px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 10px rgba(19, 112, 182, 0.2);
+    }
+    .btn-collect:hover { background: #0e5a94; transform: translateY(-2px); color: white; }
+
+    /* El btn-pay ya lo tienes, solo asegúrate que sea el verde que ya definiste */
+</style>
+
+<div class="dashboard-container">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-800 mb-1" style="color: var(--text-dark); letter-spacing: -1px;">
+                <i class="fa-solid fa-calendar-check text-primary me-2"></i> Cronograma Maestro
+            </h3>
+            <p class="text-muted small mb-0">Gestión centralizada de cobros, pagos y cuotas bancarias</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-white text-dark border p-2 px-3 rounded-3 shadow-sm">
+                <i class="fa-solid fa-filter me-1 text-primary"></i> Todos los vencimientos
+            </span>
+        </div>
+    </div>
+    <!-- Resumen de Leyenda -->
+    <div class="d-flex gap-4 mt-3 px-2">
+        <small class="text-muted"><i class="fa-solid fa-square text-danger opacity-25 me-1"></i> Vencido</small>
+        <small class="text-muted"><i class="fa-solid fa-square text-warning opacity-25 me-1"></i> Vence hoy</small>
+        <small class="text-muted"><i class="fa-solid fa-square text-white border me-1"></i> Pendiente</small>
+    </div>
+    <br>
+    <!-- Contenedor Principal -->
+    <div class="glass-card p-0 overflow-hidden shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-master mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Fecha Venc.</th>
+                        <th style="width: 35%;">Concepto / Origen</th>
+                        <th style="width: 15%;">Tipo</th>
+                        <th style="width: 15%; text-align: right;">Monto</th>
+                        <th style="width: 20%; text-align: center;">Estado / Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cuotas %}
+                    <tr class="{% if c.fecha_vencimiento < hoy %}row-overdue{% elif c.fecha_vencimiento == hoy %}row-today{% else %}row-pending{% endif %}">
+                        
+                        <!-- 1. FECHA -->
+                        <td>
+                            <div class="fw-800 text-dark">{{ c.fecha_vencimiento|date:"d M, Y" }}</div>
+                            {% if c.fecha_vencimiento < hoy %}
+                                <small class="text-danger fw-bold">Vencido hace {{ c.fecha_vencimiento|timesince }}</small>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- 2. ORIGEN -->
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white rounded-circle p-2 shadow-sm me-3 text-center" style="width: 35px; height: 35px;">
+                                    {% if c.cuenta %}
+                                        <i class="fa-solid fa-file-invoice text-primary small"></i>
+                                    {% else %}
+                                        <i class="fa-solid fa-building-columns text-primary small"></i>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 0.9rem;">
+                                        {% if c.cuenta %}
+                                            {{ c.cuenta.comprobante.entidad.nombre_razon_social|truncatechars:30 }}
+                                        {% else %}
+                                            {{ c.prestamo.prestamista }}
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">
+                                        {% if c.cuenta %}{{ c.cuenta.comprobante.serie }}-{{ c.cuenta.comprobante.numero }}{% else %}Crédito Bancario{% endif %} 
+                                        • Cuota {{ c.numero_cuota }}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- 3. TIPO -->
+                        <td>
+                            {% if c.cuenta %}
+                                {% if c.cuenta.comprobante.operacion == 'Venta' %}
+                                    <span class="badge status-badge badge-soft-success rounded-pill">COBRANZA</span>
+                                {% else %}
+                                    <span class="badge status-badge badge-soft-danger rounded-pill">PAGO PROV.</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge status-badge badge-soft-primary rounded-pill">PRÉSTAMO</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- 4. MONTO -->
+                        <td class="text-end">
+                            <div class="fw-800 text-dark" style="font-size: 1.1rem;">
+                                {% if c.cuenta.comprobante.moneda == 'USD' or c.prestamo.moneda == 'USD' %}${% else %}S/{% endif %} {{ c.monto|floatformat:2 }}
+                            </div>
+                        </td>
+                        
+                        <!-- 5. ESTADO Y ACCIÓN -->
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-3">
+                                {% if c.fecha_vencimiento < hoy %}
+                                    <span class="text-danger fw-800" style="font-size: 0.7rem;"><i class="fa-solid fa-circle-exclamation"></i> VENCIDO</span>
+                                {% elif c.fecha_vencimiento == hoy %}
+                                    <span class="text-warning fw-800" style="font-size: 0.7rem;"><i class="fa-solid fa-clock"></i> HOY</span>
+                                {% endif %}
+
+                                <a href="{% url 'registrar_pago_cuota' c.id %}" class="btn {% if c.cuenta and c.cuenta.comprobante.operacion == 'Venta' %}btn-collect{% else %}btn-pay{% endif %}">
+                                    
+                                    <i class="fa-solid {% if c.cuenta and c.cuenta.comprobante.operacion == 'Venta' %}fa-hand-holding-dollar{% else %}fa-money-bill-transfer{% endif %} me-1"></i>
+                                    
+                                    {% if c.cuenta and c.cuenta.comprobante.operacion == 'Venta' %}
+                                        Cobrar
+                                    {% else %}
+                                        Pagar
+                                    {% endif %}
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="opacity-25 mb-3">
+                                <i class="fa-solid fa-calendar-check fa-4x"></i>
+                            </div>
+                            <h5 class="text-muted fw-light">No hay vencimientos pendientes</h5>
+                            <p class="text-muted small">¡Excelente! Tu flujo de caja está al día.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>
+
+{% endblock %}
