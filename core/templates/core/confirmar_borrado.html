@@ -1,49 +1,150 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div class="container mt-5">
+
+<style>
+    /* Estilo para la advertencia crítica */
+    .danger-hero {
+        background: rgba(239, 68, 68, 0.05);
+        border-radius: 24px;
+        padding: 40px 20px;
+        border: 1px solid rgba(239, 68, 68, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .impact-panel {
+        background: white;
+        border-radius: 16px;
+        border: 1px dashed #ef4444;
+        padding: 20px;
+        text-align: left;
+    }
+
+    .impact-item {
+        display: flex;
+        align-items: start;
+        gap: 12px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }
+
+    .impact-item i {
+        color: #ef4444;
+        margin-top: 3px;
+    }
+
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus {
+        background: white;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+        outline: none;
+    }
+
+    /* Animación sutil de latido para el icono */
+    @keyframes heartbeat {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    .pulse-icon {
+        animation: heartbeat 2s infinite ease-in-out;
+    }
+</style>
+
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="glass-card border-0 shadow-lg text-center p-5">
-                <!-- Icono de Advertencia Gigante -->
-                <div class="mb-4">
-                    <i class="fa-solid fa-triangle-exclamation text-danger fa-4x animate__animated animate__pulse animate__infinite"></i>
-                </div>
+        <div class="col-lg-6 col-md-8">
+            <div class="glass-card border-0 shadow-lg p-4 p-md-5 text-center">
                 
-                <h3 class="fw-800 text-dark mb-3">¿Confirmar Eliminación?</h3>
-                <p class="text-muted">
-                    Estás a punto de eliminar el comprobante: <br>
-                    <strong class="text-dark">{{ obj.codigo_factura }}</strong>
-                </p>
-
-                <div class="alert alert-danger small text-start mb-4">
-                    <i class="fa-solid fa-circle-info me-2"></i> 
-                    <strong>Impacto del Borrado Atómico (RF-24):</strong>
-                    <ul class="mb-0 mt-2">
-                        <li>Se anularán las deudas asociadas.</li>
-                        <li>Se revertirá el stock de los productos.</li>
-                        <li>Esta acción quedará registrada en el <strong>Log de Auditoría</strong>.</li>
-                    </ul>
+                <!-- Hero de Advertencia -->
+                <div class="danger-hero">
+                    <div class="bg-white text-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-4 shadow-sm pulse-icon" style="width: 80px; height: 80px;">
+                        <i class="fa-solid fa-triangle-exclamation fs-1"></i>
+                    </div>
+                    <h3 class="fw-800 text-dark mb-2" style="letter-spacing: -1px;">¿Confirmar Eliminación?</h3>
+                    <p class="text-muted small px-md-4">
+                        Está a punto de ejecutar un borrado atómico del comprobante:<br>
+                        <strong class="text-dark fs-5">{{ obj.codigo_factura }}</strong>
+                    </p>
                 </div>
 
+                <!-- Panel de Impacto Técnico (Cascada) -->
+                <div class="impact-panel mb-4">
+                    <h6 class="fw-800 text-danger text-uppercase mb-3" style="font-size: 0.7rem; letter-spacing: 1px;">
+                        <i class="fa-solid fa-shield-virus me-2"></i>Impacto del Borrado Atómico (RF-24)
+                    </h6>
+                    
+                    <div class="impact-item">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span><strong>Stock:</strong> Se revertirá el inventario de todos los productos vinculados.</span>
+                    </div>
+
+                    {% if impacto.pagos > 0 %}
+                    <div class="impact-item">
+                        <i class="fa-solid fa-money-bill-transfer"></i>
+                        <span><strong>Finanzas:</strong> Se anularán {{ impacto.pagos }} movimientos de caja/bancos y se restaurarán los saldos.</span>
+                    </div>
+                    {% endif %}
+
+                    {% if impacto.cuotas > 0 %}
+                    <div class="impact-item">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                        <span><strong>Cronograma:</strong> Se eliminarán permanentemente las {{ impacto.cuotas }} cuotas de pago.</span>
+                    </div>
+                    {% endif %}
+
+                    {% if impacto.fletes_hijos > 0 %}
+                    <div class="impact-item">
+                        <i class="fa-solid fa-truck-fast"></i>
+                        <span class="text-danger fw-bold">Atención: {{ impacto.fletes_hijos }} fletes asociados quedarán sin referencia.</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="impact-item">
+                        <i class="fa-solid fa-blackboard"></i>
+                        <span><strong>Auditoría:</strong> Esta acción se grabará como evento crítico en la Caja Negra.</span>
+                    </div>
+                </div>
+
+                <!-- Formulario de Motivo -->
                 <form method="POST">
                     {% csrf_token %}
                     
-                    <div class="mb-4 text-start">
-                        <label class="stat-label text-danger fw-bold">Motivo de la Eliminación (Obligatorio)</label>
-                        <textarea name="motivo" class="form-control border-danger bg-danger bg-opacity-5" rows="3" required placeholder="Ej: Error en el cálculo de impuestos o factura anulada por el proveedor..."></textarea>
+                    <div class="text-start mb-4">
+                        <label class="form-label small fw-800 text-muted text-uppercase">Justificación Obligatoria</label>
+                        <textarea name="motivo" class="form-control form-control-fintech" rows="3" required 
+                                  placeholder="Ej: Factura anulada por SUNAT / Error en digitación de importes..."></textarea>
                     </div>
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-danger btn-lg fw-bold shadow">
-                            <i class="fa-solid fa-trash-can me-2"></i> Eliminar Permanentemente
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-danger w-100 py-3 rounded-4 shadow-sm fw-800 mb-3" 
+                                style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none;">
+                            <i class="fa-solid fa-trash-can me-2"></i> ELIMINAR PERMANENTEMENTE
                         </button>
-                        <a href="{% url 'lista_comprobantes' %}" class="btn btn-light rounded-3">
-                            No, cancelar y volver
+                        
+                        <a href="{% url 'lista_comprobantes' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
+                            No, deseo cancelar y volver
                         </a>
                     </div>
                 </form>
+
+            </div>
+
+            <!-- Nota de Seguridad -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-fingerprint me-1 text-danger"></i>
+                <small class="fw-bold text-uppercase" style="font-size: 0.6rem; letter-spacing: 1px;">Operación Protegida por Dietrich Admin Security</small>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}

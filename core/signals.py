@@ -10,6 +10,7 @@ from .models import (
     Cotizacion
 )
 from .middleware import get_current_user
+from django.db.models.signals import pre_delete # Usamos pre_delete para actuar ANTES de que se borre
 
 # Lista de lo que vamos a vigilar
 MODELOS_A_VIGILAR = [
@@ -58,51 +59,61 @@ def generar_resumen_humano(instance, sender_name, accion):
     return f"{accion} en {sender_name}"
 
 
-# 3. SENSOR DE GUARDADO (POST_SAVE)
 @receiver(post_save)
 def monitor_guardado_global(sender, instance, created, **kwargs):
     if sender in MODELOS_A_VIGILAR:
         user = get_current_user()
         if user and user.is_authenticated:
             if sender == LogAuditoria: return
-            
             accion = 'INSERT' if created else 'UPDATE'
-            
-            # Buscamos la empresa vinculada
             empresa = getattr(instance, 'empresa', None)
-            if not empresa and hasattr(instance, 'comprobante'):
-                empresa = instance.comprobante.empresa
-
-            # Llamamos a la función que estaba dando error (ahora ya está definida arriba)
             resumen = generar_resumen_humano(instance, sender.__name__, accion)
-            
-            if not created: 
-                resumen = f"[EDICIÓN] {resumen}"
+            if not created: resumen = f"[EDICIÓN] {resumen}"
 
             LogAuditoria.objects.create(
-                usuario=user,
-                empresa=empresa,
-                accion=accion,
-                tabla_afectada=sender.__name__,
-                referencia_id=instance.id,
+                usuario=user, empresa=empresa, accion=accion,
+                tabla_afectada=sender.__name__, referencia_id=instance.id,
                 motivo_cambio=resumen
             )
 
-# 4. SENSOR DE BORRADO (POST_DELETE)
-@receiver(post_delete)
-def monitor_borrado_global(sender, instance, **kwargs):
-    if sender in MODELOS_A_VIGILAR:
-        user = get_current_user()
-        if user and user.is_authenticated:
-            empresa = getattr(instance, 'empresa', None)
-            if not empresa and hasattr(instance, 'comprobante'):
-                empresa = instance.comprobante.empresa
+# --- 3. SENSOR DE REVERSIÓN DE STOCK (PRE_DELETE COMPROBANTE) ---
+@receiver(pre_delete, sender=Comprobante)
+def revertir_impacto_total_documento(sender, instance, **kwargs):
+    """ RF-24: Antes de borrar la factura, devolvemos el stock al almacén """
+    for det in instance.detalles.all():
+        if det.producto:
+            if instance.operacion == 'Compra':
+                det.producto.stock_actual -= det.cantidad # Quitamos lo que compramos
+            else: 
+                det.producto.stock_actual += det.cantidad # Devolvemos lo que vendimos
+            det.producto.save()
 
-            LogAuditoria.objects.create(
-                usuario=user,
-                empresa=empresa,
-                accion='DELETE',
-                tabla_afectada=sender.__name__,
-                referencia_id=instance.id,
-                motivo_cambio=f"ELIMINACIÓN: Se borró registro de {sender.__name__} ID {instance.id}"
-            )
+    # Al borrar el comprobante, buscamos sus pagos y los borramos también
+    # Esto disparará el sensor #4 (abajo) para limpiar el banco.
+    MovimientoFinanciero.objects.filter(comprobante=instance).delete()
+
+# --- 4. SENSOR DE REVERSIÓN BANCARIA (POST_DELETE MOVIMIENTO) ---
+# ESTE ES EL QUE TE FALTABA PARA QUE EL BCP QUEDE EN CERO
+@receiver(post_delete, sender=MovimientoFinanciero)
+def revertir_saldo_bancario_al_borrar(sender, instance, **kwargs):
+    """ Si borras un pago, el banco debe recuperar o restar ese dinero """
+    monto = decimal.Decimal(str(instance.monto))
+    itf = decimal.Decimal(str(instance.itf_monto))
+
+    # Reversión en Cuenta Bancaria
+    if instance.cuenta_bancaria:
+        obj = instance.cuenta_bancaria
+        if instance.tipo == 'Ingreso':
+            obj.saldo_actual -= (monto - itf) # Si borro un cobro, resto del banco
+        else:
+            obj.saldo_actual += (monto + itf) # Si borro un pago, devuelvo al banco
+        obj.save()
+    
+    # Reversión en Caja Efectivo
+    elif instance.caja:
+        obj = instance.caja
+        if instance.tipo == 'Ingreso':
+            obj.saldo_actual -= monto
+        else:
+            obj.saldo_actual += monto
+        obj.save()

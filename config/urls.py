@@ -65,6 +65,15 @@ urlpatterns = [
     path('ventas/manual/preview/', views.preview_venta_manual, name='preview_venta_manual'),
     path('ventas/manual/guardar/', views.guardar_venta_manual_final, name='guardar_venta_manual_final'),
     path('ventas/pdf/<int:pk>/', views.ver_pdf_venta_manual, name='ver_pdf_venta_manual'),
+    path('mantenimiento/categorias/editar/<int:pk>/', views.editar_categoria, name='editar_categoria'),
+    path('mantenimiento/categorias/eliminar/<int:pk>/', views.eliminar_categoria, name='eliminar_categoria'),
+    path('inventario/producto/editar/<int:pk>/', views.editar_producto, name='editar_producto'),
+    path('inventario/producto/ajustar/<int:pk>/', views.ajustar_stock, name='ajustar_stock'),
+    path('inventario/producto/kardex/<int:pk>/', views.producto_kardex, name='producto_kardex'),
+    path('mantenimiento/entidades/editar/<int:pk>/', views.editar_entidad, name='editar_entidad'),
+    path('mantenimiento/entidades/eliminar/<int:pk>/', views.eliminar_entidad, name='eliminar_entidad'),
+    path('mantenimiento/entidades/detalle/<int:pk>/', views.detalle_entidad, name='detalle_entidad'),
+    path('sistema/comprobante/ver/<int:pk>/', views.ver_comprobante_detalle, name='ver_comprobante_detalle'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -2,7 +2,7 @@ from datetime import datetime
 import decimal
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Caja, CategoriaGasto, CategoriaProducto, CertificadoRetencion, Cotizacion, CotizacionDetalle, Cuenta_Bancaria, CuentaEstado, Cuota, DeclaracionMensual, Empresa, Entidad, GastoOperativo, LogAuditoria, MovimientoFinanciero, Notificacion, PagoImpuesto, Prestamo, Producto, Comprobante, ComprobanteDetalle, RetencionDetalle, TipoCambioDia
+from .models import AjusteStock, Caja, CategoriaGasto, CategoriaProducto, CertificadoRetencion, Cotizacion, CotizacionDetalle, Cuenta_Bancaria, CuentaEstado, Cuota, DeclaracionMensual, Empresa, Entidad, GastoOperativo, LogAuditoria, MovimientoFinanciero, Notificacion, PagoImpuesto, Prestamo, Producto, Comprobante, ComprobanteDetalle, RetencionDetalle, TipoCambioDia
 from .utils import consultar_validez_sunat, procesar_pdf_sunat, procesar_xml_sunat
 import uuid
 from django.db import transaction
@@ -19,6 +19,8 @@ from .utils import procesar_pdf_impuestos
 from .models import CierreMensual
 from django.contrib.auth import logout as auth_logout
 import re
+from itertools import chain
+from operator import attrgetter
 
 @login_required
 def seleccionar_empresa(request):
@@ -702,26 +704,37 @@ def eliminar_comprobante(request, pk):
     if request.user.rol.nombre != 'Admin':
         return redirect('dashboard') # Solo Admins (RF-24)
 
-    comprobante = get_object_or_404(Comprobante, pk=pk, empresa_id=request.session['empresa_id'])
+    comprobante = get_object_or_404(Comprobante, id=pk, empresa_id=request.session['empresa_id'])
+    
+    # --- CALCULAMOS EL IMPACTO PARA EL MENSAJE ---
+    impacto = {
+        'cuotas': Cuota.objects.filter(cuenta__comprobante=comprobante).count(),
+        'pagos': MovimientoFinanciero.objects.filter(comprobante=comprobante).count(),
+        'fletes_hijos': Comprobante.objects.filter(comprobante_asociado=comprobante).count(),
+        'prestamos': Prestamo.objects.filter(comprobante=comprobante).count(),
+    }
 
     if request.method == 'POST':
-        motivo = request.POST.get('motivo', 'Sin motivo especificado')
+        motivo = request.POST.get('motivo')
         
-        # --- ESTE ES EL DISPARADOR ---
+        # Auditoría
         LogAuditoria.objects.create(
             usuario=request.user,
-            empresa_id=int(request.session['empresa_id']),
+            empresa_id=request.session['empresa_id'],
             accion='DELETE',
             tabla_afectada='Comprobante',
             referencia_id=comprobante.id,
-            motivo_cambio=f"Eliminación de documento {comprobante.codigo_factura}. Motivo: {motivo}"
+            motivo_cambio=f"BORRADO ATÓMICO: {comprobante.codigo_factura}. Motivo: {motivo}"
         )
-        # -----------------------------
         
+        # El signal pre_delete que ya tenemos se encargará de revertir stock y bancos
         comprobante.delete()
-        return redirect('dashboard')
+        return redirect('lista_comprobantes')
 
-    return render(request, 'core/confirmar_borrado.html', {'obj': comprobante})
+    return render(request, 'core/confirmar_borrado.html', {
+        'obj': comprobante,
+        'impacto': impacto # Pasamos los números al HTML
+    })
 
 @login_required
 @transaction.atomic
@@ -1022,6 +1035,70 @@ def crear_entidad(request):
         return redirect('lista_entidades')
     return render(request, 'core/entidad_form.html')
 
+@login_required
+def detalle_entidad(request, pk):
+    emp_id = request.session.get('empresa_id')
+    entidad = get_object_or_404(Entidad, id=pk, empresa_id=emp_id)
+    
+    # 1. Obtenemos todos sus comprobantes
+    comprobantes = Comprobante.objects.filter(entidad=entidad, empresa_id=emp_id).order_by('-fecha_emision')
+
+    # 2. Calculamos el Volumen de Negocio (Total de lo facturado históricamente)
+    volumen_pen = comprobantes.filter(moneda='PEN').aggregate(Sum('total'))['total__sum'] or 0
+    volumen_usd = comprobantes.filter(moneda='USD').aggregate(Sum('total'))['total__sum'] or 0
+
+    # 3. Calculamos la Deuda Pendiente Actual (Lo que falta cobrar o pagar)
+    deudas = CuentaEstado.objects.filter(comprobante__entidad=entidad, comprobante__empresa_id=emp_id)
+    
+    deuda_pen = deudas.filter(comprobante__moneda='PEN').aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
+    deuda_usd = deudas.filter(comprobante__moneda='USD').aggregate(Sum('saldo_pendiente'))['saldo_pendiente__sum'] or 0
+
+    # 4. Traemos los últimos 10 movimientos para la tabla
+    ultimos_movimientos = comprobantes[:10]
+
+    return render(request, 'core/entidad_detalle.html', {
+        'e': entidad,
+        'v_pen': volumen_pen,
+        'v_usd': volumen_usd,
+        'd_pen': deuda_pen,
+        'd_usd': deuda_usd,
+        'movimientos': ultimos_movimientos
+    })
+
+@login_required
+def editar_entidad(request, pk):
+    # Buscamos la entidad asegurándonos que sea de la empresa actual
+    emp_id = request.session.get('empresa_id')
+    entidad = get_object_or_404(Entidad, id=pk, empresa_id=emp_id)
+    
+    if request.method == 'POST':
+        entidad.tipo_entidad = request.POST.get('tipo_entidad')
+        entidad.tipo_documento = request.POST.get('tipo_documento')
+        entidad.numero_documento = request.POST.get('numero_documento')
+        entidad.nombre_razon_social = request.POST.get('nombre_razon_social')
+        entidad.direccion = request.POST.get('direccion')
+        entidad.save()
+        return redirect('lista_entidades')
+        
+    return render(request, 'core/entidad_edit_form.html', {'e': entidad})
+
+@login_required
+def eliminar_entidad(request, pk):
+    emp_id = request.session.get('empresa_id')
+    entidad = get_object_or_404(Entidad, id=pk, empresa_id=emp_id)
+    
+    # --- CUCHILLA DE SEGURIDAD ---
+    # Verificamos si tiene comprobantes (facturas/boletas) asociados
+    tiene_movimientos = Comprobante.objects.filter(entidad=entidad).exists()
+    
+    if tiene_movimientos:
+        # Aquí podrías usar messages de Django, pero por ahora redirigimos con un aviso simple
+        # En una fase siguiente podemos poner una alerta roja en el listado
+        return redirect('lista_entidades')
+        
+    entidad.delete()
+    return redirect('lista_entidades')
+
 # --- MANTENIMIENTO DE INVENTARIO (RF-07) ---
 @login_required
 def lista_productos(request):
@@ -1031,9 +1108,37 @@ def lista_productos(request):
 
 @login_required
 def lista_categorias(request):
-    # Estas son globales o por empresa segun prefieras, aqui las daremos todas
-    categorias = CategoriaProducto.objects.all()
+    # --- LÓGICA DE GUARDADO (Esto es lo que faltaba) ---
+    if request.method == 'POST':
+        nombre_cat = request.POST.get('nombre')
+        if nombre_cat:
+            # Usamos get_or_create para evitar que crees dos veces la misma categoría
+            CategoriaProducto.objects.get_or_create(nombre=nombre_cat)
+            return redirect('lista_categorias') # Refresca para mostrar la nueva
+    # --------------------------------------------------
+
+    # Lógica de listado (GET)
+    categorias = CategoriaProducto.objects.all().order_by('nombre')
     return render(request, 'core/categorias_list.html', {'categorias': categorias})
+
+@login_required
+def editar_categoria(request, pk):
+    categoria = get_object_or_404(CategoriaProducto, id=pk)
+    
+    if request.method == 'POST':
+        categoria.nombre = request.POST.get('nombre')
+        categoria.save()
+        return redirect('lista_categorias')
+        
+    return render(request, 'core/categoria_edit_form.html', {'categoria': categoria})
+
+@login_required
+def eliminar_categoria(request, pk):
+    categoria = get_object_or_404(CategoriaProducto, id=pk)
+    # Al eliminar, los productos que tenían esta categoría pasarán a "Sin Categoría"
+    # automáticamente por el SET_NULL que pusimos en el modelo.
+    categoria.delete()
+    return redirect('lista_categorias')
 
 # --- MÓDULO DE CAJA Y BANCOS ---
 @login_required
@@ -1087,8 +1192,6 @@ def lista_prestamos(request):
         'total_intereses': total_intereses,
         'deuda_total': total_capital + total_intereses
     })
-
-# core/views.py
 
 @login_required
 @transaction.atomic
@@ -1164,6 +1267,27 @@ def registrar_pago_comprobante(request, pk):
         'cajas': cajas,
         'bancos': bancos
     })
+
+
+@login_required
+def ver_comprobante_detalle(request, pk): # <--- Nombre Universal
+    comprobante = get_object_or_404(Comprobante, id=pk, empresa_id=request.session['empresa_id'])
+    empresa = comprobante.empresa
+    bancos = Cuenta_Bancaria.objects.filter(empresa=empresa)
+
+    subtotal = comprobante.subtotal
+    igv = comprobante.igv
+    
+    return render(request, 'core/comprobante_universal_view.html', {
+        'c': comprobante,
+        'empresa': empresa,
+        'bancos': bancos,
+        'subtotal': subtotal,
+        'igv': igv,
+        'mostrar_igv': (igv > 0)
+    })
+
+
 
 @login_required
 def cargar_retencion(request):
@@ -1306,31 +1430,22 @@ def registrar_compra_manual(request):
         moneda = request.POST.get('moneda')
         tc = decimal.Decimal(request.POST.get('tipo_cambio', '1.000'))
         
-        # 2. Crear/Obtener Proveedor
+        # 2. Proveedor
         proveedor, _ = Entidad.objects.get_or_create(
-            empresa=empresa,
-            numero_documento=ruc_dni,
+            empresa=empresa, numero_documento=ruc_dni,
             defaults={'nombre_razon_social': razon_social, 'tipo_entidad': 'Proveedor'}
         )
         
-        # 3. Crear el Comprobante (IGV en 0 porque es manual/importación)
+        # 3. Comprobante
         monto_total = decimal.Decimal('0.00')
         comprobante = Comprobante.objects.create(
-            empresa=empresa,
-            entidad=proveedor,
-            tipo_documento=tipo_doc,
-            operacion='Compra',
-            serie=serie_num.split('-')[0] if '-' in serie_num else 'MAN',
-            numero=serie_num.split('-')[1] if '-' in serie_num else serie_num,
-            fecha_emision=fecha,
-            moneda=moneda,
-            tipo_cambio=tc,
-            subtotal=0, # Se actualizará abajo
-            igv=0,      # Compras manuales/internacionales no suelen desglosar IGV aquí
-            total=0     # Se actualizará abajo
+            empresa=empresa, entidad=proveedor, tipo_documento=tipo_doc,
+            operacion='Compra', serie='MAN', numero=serie_num,
+            fecha_emision=fecha, moneda=moneda, tipo_cambio=tc,
+            subtotal=0, igv=0, total=0
         )
 
-        # 4. Procesar los Productos (Lista dinámica)
+        # 4. Procesar los Productos
         descripciones = request.POST.getlist('desc[]')
         cantidades = request.POST.getlist('cant[]')
         precios = request.POST.getlist('prec[]')
@@ -1340,58 +1455,177 @@ def registrar_compra_manual(request):
         for i in range(len(descripciones)):
             cant = decimal.Decimal(cantidades[i])
             prec_unit = decimal.Decimal(precios[i])
-            p_venta_sug = decimal.Decimal(precios_venta[i] if i < len(precios_venta) and precios_venta[i] else '0.00')
+            p_v_sug = decimal.Decimal(precios_venta[i] if i < len(precios_venta) and precios_venta[i] else '0.00')
             subtotal_fila = cant * prec_unit
             monto_total += subtotal_fila
             
-            # Buscamos el producto (por ID si se eligió del catálogo o por nombre)
-            if prod_ids[i]:
-                producto = Producto.objects.get(id=prod_ids[i])
-            else:
-                # Si es un nombre nuevo, creamos el producto (RF-08)
+            # --- MEJORA: Búsqueda inteligente para no duplicar productos ---
+            producto = None
+            if i < len(prod_ids) and prod_ids[i]:
+                producto = Producto.objects.filter(id=prod_ids[i]).first()
+            
+            if not producto:
+                # Si no se eligió del buscador, intentamos buscar por nombre exacto
+                producto = Producto.objects.filter(empresa=empresa, nombre_interno__iexact=descripciones[i]).first()
+
+            if not producto:
+                # Si sigue sin existir, recién lo creamos
                 producto = Producto.objects.create(
                     empresa=empresa,
                     sku=f"MAN-{uuid.uuid4().hex[:5].upper()}",
                     nombre_interno=descripciones[i],
-                    precio_compra_referencial=prec_unit * tc # Guardamos en Soles
+                    precio_compra_referencial=prec_unit * tc
                 )
+            # ---------------------------------------------------------------
 
-            p_v_manual = decimal.Decimal(precios_venta[i]) if i < len(precios_venta) and precios_venta[i] else 0
-            producto.precio_venta_referencial = p_v_manual
-            producto.stock_actual += cant
+            # ASIGNAR PRECIO DE VENTA Y SUMAR STOCK (UNA SOLA VEZ)
+            producto.precio_venta_referencial = p_v_sug
+            producto.stock_actual += cant # <--- SOLO ESTA LÍNEA
             producto.save()   
             
-            # Crear detalle y subir stock
+            # Crear detalle
             ComprobanteDetalle.objects.create(
-                comprobante=comprobante,
-                producto=producto,
-                cantidad=cant,
-                precio_unitario=prec_unit,
-                subtotal_linea=subtotal_fila
+                comprobante=comprobante, producto=producto,
+                cantidad=cant, precio_unitario=prec_unit, subtotal_linea=subtotal_fila
             )
-            producto.stock_actual += cant
-            producto.save()
 
-        # 5. Finalizar montos del comprobante
+        # 5. Finalizar montos
         comprobante.subtotal = monto_total
         comprobante.total = monto_total
         comprobante.save()
 
         # 6. Crear Cuenta por Pagar
         CuentaEstado.objects.create(
-            comprobante=comprobante,
-            monto_total=monto_total,
-            saldo_pendiente=monto_total,
-            fecha_vencimiento=datetime.date.today()
+            comprobante=comprobante, monto_total=monto_total,
+            saldo_pendiente=monto_total, fecha_vencimiento=fecha
         )
 
         return redirect('dashboard')
 
-    # Para el buscador de productos existentes
     mis_productos = Producto.objects.filter(empresa=empresa)
     return render(request, 'core/compra_manual_form.html', {'mis_productos': mis_productos})
 
-# core/views.py
+@login_required
+def editar_producto(request, pk):
+    producto = get_object_or_404(Producto, id=pk, empresa_id=request.session['empresa_id'])
+    
+    if request.method == 'POST':
+        # Actualizamos datos básicos y precios
+        producto.nombre_interno = request.POST.get('nombre')
+        producto.sku = request.POST.get('sku')
+        producto.precio_compra_referencial = decimal.Decimal(request.POST.get('p_compra'))
+        producto.precio_venta_referencial = decimal.Decimal(request.POST.get('p_venta'))
+        
+        # Categoría
+        cat_id = request.POST.get('categoria')
+        if cat_id:
+            producto.categoria_id = cat_id
+            
+        producto.save()
+        return redirect('lista_productos')
+
+    categorias = CategoriaProducto.objects.all()
+    return render(request, 'core/producto_edit_form.html', {
+        'p': producto,
+        'categorias': categorias
+    })
+
+@login_required
+@transaction.atomic
+def ajustar_stock(request, pk):
+    producto = get_object_or_404(Producto, id=pk, empresa_id=request.session['empresa_id'])
+    
+    if request.method == 'POST':
+        tipo = request.POST.get('tipo')
+        cant = decimal.Decimal(request.POST.get('cantidad'))
+        motivo = request.POST.get('motivo')
+
+        # 1. Registrar el Ajuste
+        AjusteStock.objects.create(
+            empresa_id=request.session['empresa_id'],
+            producto=producto,
+            tipo=tipo,
+            cantidad=cant,
+            motivo=motivo,
+            usuario=request.user
+        )
+
+        # 2. Actualizar el Stock Real
+        if tipo == 'Ingreso':
+            producto.stock_actual += cant
+        else:
+            producto.stock_actual -= cant
+        
+        producto.save()
+        return redirect('lista_productos')
+
+    return render(request, 'core/producto_ajuste_form.html', {'p': producto})
+
+@login_required
+def producto_kardex(request, pk):
+    emp_id = request.session.get('empresa_id')
+    producto = get_object_or_404(Producto, id=pk, empresa_id=emp_id)
+
+    # 1. Obtener movimientos desde Facturas/Boletas (Detalles)
+    # Filtramos los detalles de este producto para la empresa actual
+    mov_comprobantes = ComprobanteDetalle.objects.filter(
+        producto=producto, 
+        comprobante__empresa_id=emp_id
+    ).select_related('comprobante', 'comprobante__entidad')
+
+    # 2. Obtener movimientos desde Ajustes Manuales
+    mov_ajustes = AjusteStock.objects.filter(producto=producto)
+
+    # 3. Estandarizar y Unificar los datos para el reporte
+    historial_sucio = []
+
+    for d in mov_comprobantes:
+        # Si es compra, es entrada. Si es venta, es salida.
+        tipo_mov = 'Entrada' if d.comprobante.operacion == 'Compra' else 'Salida'
+        historial_sucio.append({
+            'fecha': d.comprobante.fecha_emision,
+            'documento': d.comprobante.codigo_factura,
+            'entidad': d.comprobante.entidad.nombre_razon_social,
+            'tipo': tipo_mov,
+            'cantidad': float(d.cantidad),
+            'precio': float(d.precio_unitario),
+        })
+
+    for a in mov_ajustes:
+        tipo_mov = 'Entrada' if a.tipo == 'Ingreso' else 'Salida'
+        historial_sucio.append({
+            'fecha': a.fecha.date(),
+            'documento': 'AJUSTE MANUAL',
+            'entidad': f"Usuario: {a.usuario.username}",
+            'tipo': tipo_mov,
+            'cantidad': float(a.cantidad),
+            'precio': 0.0,
+            'motivo': a.motivo
+        })
+
+    # 4. Ordenar por fecha y calcular Saldo Acumulado
+    historial_ordenado = sorted(historial_sucio, key=lambda x: x['fecha'])
+    
+    saldo_acumulado = 0
+    kardex_final = []
+
+    for mov in historial_ordenado:
+        if mov['tipo'] == 'Entrada':
+            saldo_acumulado += mov['cantidad']
+        else:
+            saldo_acumulado -= mov['cantidad']
+        
+        mov['saldo_despues'] = saldo_acumulado
+        kardex_final.append(mov)
+
+    # Invertimos para ver lo más reciente arriba
+    kardex_final.reverse()
+
+    return render(request, 'core/producto_kardex.html', {
+        'p': producto,
+        'movimientos': kardex_final
+    })
+
 
 @login_required
 def registrar_venta_manual(request):
@@ -1608,8 +1842,6 @@ def cronograma_vencimientos(request):
         'hoy': hoy
     })
 
-# core/views.py
-
 @login_required
 @transaction.atomic
 def registrar_pago_cuota(request, cuota_id):
@@ -1744,6 +1976,7 @@ def trazabilidad_igv(request):
             total_credito += igv_pen
             
         reporte.append({
+            'id': c.id,
             'fecha': c.fecha_emision,
             'documento': c.codigo_factura,
             'entidad': c.entidad.nombre_razon_social,

@@ -121,10 +121,13 @@
                         <!-- 4. Comprobante con fuente Monospace -->
                         <td>
                             {% if g.comprobante %}
-                                <span class="receipt-id">
-                                    <i class="fa-solid fa-receipt me-1 small opacity-50"></i>
-                                    {{ g.comprobante.serie }}-{{ g.comprobante.numero }}
-                                </span>
+                                <!-- Cambiamos span por un enlace <a> -->
+                                <a href="{% url 'ver_comprobante_detalle' g.comprobante.id %}" class="text-decoration-none" title="Haga clic para ver el documento">
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                                        <i class="fa-solid fa-receipt me-1 small"></i>
+                                        {{ g.comprobante.serie }}-{{ g.comprobante.numero }}
+                                    </span>
+                                </a>
                             {% else %}
                                 <span class="text-muted italic small">Sin comprobante (S/F)</span>
                             {% endif %}

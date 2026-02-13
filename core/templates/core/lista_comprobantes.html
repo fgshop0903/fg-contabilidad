@@ -108,6 +108,7 @@
                         <th style="width: 10%;">Moneda</th>
                         <th style="width: 13%; text-align: right;">Total</th>
                         <th style="width: 12%; text-align: center;">Estado SUNAT</th>
+                        <th style="width: 15%; text-align: center;">Saldo Pendiente</th> 
                         <th style="width: 13%; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
@@ -122,7 +123,12 @@
 
                         <!-- 2. Documento -->
                         <td>
-                            <span class="doc-number">{{ c.serie }}-{{ c.numero }}</span>
+                            <a href="{% url 'ver_comprobante_detalle' c.id %}" class="text-decoration-none" title="Ver documento formal">
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 fw-bold" style="letter-spacing: 0.5px;">
+                                    <i class="fa-solid fa-file-invoice me-2"></i>
+                                    {{ c.serie }}-{{ c.numero }}
+                                </span>
+                            </a>
                         </td>
 
                         <!-- 3. Entidad -->
@@ -158,7 +164,26 @@
                             {% endif %}
                         </td>
 
-                        <!-- 7. Acciones -->
+                        <!-- 7. NUEVA COLUMNA: SALDO PENDIENTE (Lógica de Alerta) -->
+                        <td class="text-center">
+                            {% for cuenta in c.cuenta_estado.all %}
+                                {% if cuenta.saldo_pendiente == 0 %}
+                                    <div class="text-success fw-bold" style="font-size: 0.8rem;">
+                                        <i class="fa-solid fa-check-double me-1"></i> {{ c.moneda }} 0,00
+                                    </div>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size: 0.6rem;">PAGADO TOTAL</span>
+                                {% else %}
+                                    <div class="text-danger fw-800" style="font-size: 0.85rem;">
+                                        {{ c.moneda }} {{ cuenta.saldo_pendiente|floatformat:2 }}
+                                    </div>
+                                    <small class="text-muted fw-bold" style="font-size: 0.6rem; text-transform: uppercase;">
+                                        {% if c.operacion == 'Compra' %}Por Pagar{% else %}Por Cobrar{% endif %}
+                                    </small>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+
+                        <!-- 8. Acciones (Botones Inteligentes) -->
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-1">
                                 <!-- Validar -->
@@ -166,48 +191,52 @@
                                     <i class="fa-solid fa-shield-check text-primary"></i>
                                 </a>
 
-                                <!-- Registrar Dinero (Cobro/Pago) -->
-                                <a href="{% url 'registrar_pago_comprobante' c.id %}" class="btn-action" title="Mover Dinero">
-                                    <i class="fa-solid fa-hand-holding-dollar {% if c.operacion == 'Compra' %}text-danger{% else %}text-success{% endif %}"></i>
-                                </a>
+                                <!-- Registrar Dinero (Cambia según el saldo) -->
+                                {% for cuenta in c.cuenta_estado.all %}
+                                    {% if cuenta.saldo_pendiente > 0 %}
+                                        <!-- Si hay deuda, mostramos el botón de cobro/pago normal -->
+                                        <a href="{% url 'registrar_pago_comprobante' c.id %}" class="btn-action" title="Mover Dinero">
+                                            <i class="fa-solid fa-hand-holding-dollar {% if c.operacion == 'Compra' %}text-danger{% else %}text-success{% endif %}"></i>
+                                        </a>
+                                    {% else %}
+                                        <!-- Si el saldo es 0,00, mostramos un check azul de tarea completada -->
+                                        <div class="btn-action" title="Documento Cancelado">
+                                            <i class="fa-solid fa-circle-check text-info opacity-50"></i>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
 
-                                <!-- Cuotas (Solo Ventas) -->
+                                <!-- Cuotas (Mantenido) -->
                                 {% if c.operacion == 'Venta' %}
                                     {% for cuenta in c.cuenta_estado.all %}
+                                        {% if cuenta.saldo_pendiente > 0 %}
                                         <a href="{% url 'configurar_cuotas' cuenta.id %}" class="btn-action" title="Programar Cuotas">
                                             <i class="fa-solid fa-calendar-day text-info"></i>
                                         </a>
+                                        {% endif %}
                                     {% endfor %}
                                 {% endif %}
 
                                 {% if c.serie == 'V-MAN' %}
-                                    <a href="{% url 'ver_pdf_venta_manual' c.id %}" class="btn btn-sm btn-light border" title="Descargar PDF de Nota/Boleta">
+                                    <a href="{% url 'ver_pdf_venta_manual' c.id %}" class="btn btn-sm btn-light border" title="PDF Venta">
                                         <i class="fas fa-file-pdf text-danger"></i>
                                     </a>
                                 {% endif %}
 
-                                <!-- Admin -->
+                                <!-- Admin Dropdown (Mantenido) -->
                                 {% if user.rol.nombre == 'Admin' %}
                                     <div class="dropdown">
                                         <a href="#" class="btn-action" data-bs-toggle="dropdown"><i class="fa-solid fa-ellipsis-vertical"></i></a>
                                         <ul class="dropdown-menu shadow-lg border-0 glass-card">
-                                            <!-- CAMBIO AQUÍ: Ahora es Edición Completa -->
-                                            <li>
-                                                <a class="dropdown-item small" href="{% url 'editar_comprobante' c.id %}">
-                                                    <i class="fa-solid fa-file-pen text-warning me-2"></i> Editar Comprobante
-                                                </a>
-                                            </li>
+                                            <li><a class="dropdown-item small" href="{% url 'editar_comprobante' c.id %}"><i class="fa-solid fa-file-pen text-warning me-2"></i> Editar</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item small text-danger" href="{% url 'eliminar_comprobante' c.id %}">
-                                                    <i class="fa-solid fa-trash me-2"></i> Eliminar Documento
-                                                </a>
-                                            </li>
+                                            <li><a class="dropdown-item small text-danger" href="{% url 'eliminar_comprobante' c.id %}"><i class="fa-solid fa-trash me-2"></i> Eliminar</a></li>
                                         </ul>
                                     </div>
                                 {% endif %}
                             </div>
                         </td>
+
                     </tr>
                     {% empty %}
                     <tr>

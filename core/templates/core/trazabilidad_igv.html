@@ -127,8 +127,13 @@
 
                         <!-- Documento -->
                         <td>
-                            <div class="fw-800 text-dark" style="font-size: 0.8rem;">{{ item.documento }}</div>
-                            <small class="text-muted">{{ item.entidad|truncatechars:35 }}</small>
+                            <a href="{% url 'ver_comprobante_detalle' item.id %}" class="text-decoration-none" title="Ver comprobante original">
+                                <div class="fw-800 text-primary" style="font-size: 0.85rem; letter-spacing: -0.5px;">
+                                    <i class="fa-solid fa-file-invoice me-1 small opacity-75"></i>
+                                    {{ item.documento }}
+                                </div>
+                            </a>
+                            <small class="text-muted" style="font-size: 0.7rem;">{{ item.entidad|truncatechars:35 }}</small>
                         </td>
 
                         <!-- Tipo -->

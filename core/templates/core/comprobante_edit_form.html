@@ -1,17 +1,88 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div class="container dashboard-container">
-    <div class="glass-card border-0 shadow-sm">
-        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+
+<style>
+    /* Estilos Fintech para inputs */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-header-fintech {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header-fintech::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    /* Tabla de edición de items */
+    .table-edit thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        border: none;
+        padding: 12px;
+    }
+
+    .table-edit tbody td {
+        padding: 12px 8px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .audit-box {
+        background: rgba(239, 68, 68, 0.03);
+        border: 1px dashed rgba(239, 68, 68, 0.3);
+        border-radius: 16px;
+        padding: 20px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="glass-card border-0 shadow-sm p-4 p-md-5">
+        
+        <!-- ENCABEZADO DINÁMICO -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
             <div>
-                <h4 class="fw-800 m-0" style="color: var(--primary);">
-                    <i class="fa-solid fa-file-pen me-2"></i> Editar {{ c.operacion }}: {{ c.codigo_factura }}
-                </h4>
-                <small class="text-muted">Todos los cambios afectarán el stock y el balance financiero.</small>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary-soft text-primary rounded-3 p-3">
+                        <i class="fa-solid fa-file-pen fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-800 text-dark mb-0" style="letter-spacing: -1px;">
+                            Editar {{ c.operacion }}: <span class="text-primary">{{ c.codigo_factura }}</span>
+                        </h4>
+                        <p class="text-muted small mb-0">Gestión de auditoría y corrección de documentos maestros.</p>
+                    </div>
+                </div>
             </div>
-            <div class="text-end">
-                <span class="badge bg-warning bg-opacity-10 text-dark px-3 py-2 rounded-pill fw-bold">
-                    MODO EDICIÓN TOTAL
+            <div class="text-md-end">
+                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 rounded-pill fw-bold" style="font-size: 0.7rem;">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> MODO EDICIÓN TOTAL
                 </span>
             </div>
         </div>
@@ -19,94 +90,116 @@
         <form method="POST">
             {% csrf_token %}
             
-            <!-- SECCIÓN 1: CABECERA COMPLETA -->
-            <div class="row g-3 mb-4">
+            <!-- SECCIÓN 1: DATOS GENERALES -->
+            <div class="section-header-fintech">1. Información del Comprobante</div>
+            <div class="row g-3 mb-5">
                 <div class="col-md-2">
-                    <label class="stat-label">RUC/DNI</label>
-                    <input type="text" name="ruc_dni" class="form-control" value="{{ c.entidad.numero_documento }}" required>
+                    <label class="form-label small fw-bold text-muted">RUC/DNI Entidad</label>
+                    <input type="text" name="ruc_dni" class="form-control form-control-fintech" value="{{ c.entidad.numero_documento }}" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="stat-label">Razón Social</label>
-                    <input type="text" name="razon_social" class="form-control" value="{{ c.entidad.nombre_razon_social }}" required>
+                    <label class="form-label small fw-bold text-muted">Razón Social / Nombre</label>
+                    <input type="text" name="razon_social" class="form-control form-control-fintech" value="{{ c.entidad.nombre_razon_social }}" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="stat-label">Tipo Doc.</label>
-                    <select name="tipo_documento" class="form-select">
-                        <option value="Factura" {% if c.tipo_documento == 'Factura' %}selected{% endif %}>Factura</option>
-                        <option value="Boleta" {% if c.tipo_documento == 'Boleta' %}selected{% endif %}>Boleta</option>
-                        <option value="Recibo" {% if c.tipo_documento == 'Recibo' %}selected{% endif %}>Recibo / Nota</option>
-                        <option value="Otros" {% if c.tipo_documento == 'Otros' %}selected{% endif %}>Otros (AliExpress)</option>
+                    <label class="form-label small fw-bold text-muted">Tipo Documento</label>
+                    <select name="tipo_documento" class="form-select form-select-fintech">
+                        <option value="Factura" {% if c.tipo_documento == 'Factura' %}selected{% endif %}>📄 Factura</option>
+                        <option value="Boleta" {% if c.tipo_documento == 'Boleta' %}selected{% endif %}>🎫 Boleta</option>
+                        <option value="Recibo" {% if c.tipo_documento == 'Recibo' %}selected{% endif %}>📝 Recibo / Nota</option>
+                        <option value="Otros" {% if c.tipo_documento == 'Otros' %}selected{% endif %}>📦 Otros (AliExpress/Web)</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="stat-label">Fecha</label>
-                    <input type="date" name="fecha" class="form-control" value="{{ c.fecha_emision|date:'Y-m-d' }}" required>
+                    <label class="form-label small fw-bold text-muted">Fecha Emisión</label>
+                    <input type="date" name="fecha" class="form-control form-control-fintech" value="{{ c.fecha_emision|date:'Y-m-d' }}" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="stat-label">Moneda</label>
-                    <select name="moneda" class="form-select">
-                        <option value="PEN" {% if c.moneda == 'PEN' %}selected{% endif %}>Soles (PEN)</option>
-                        <option value="USD" {% if c.moneda == 'USD' %}selected{% endif %}>Dólares (USD)</option>
+                    <label class="form-label small fw-bold text-muted">Moneda</label>
+                    <select name="moneda" class="form-select form-select-fintech fw-bold">
+                        <option value="PEN" {% if c.moneda == 'PEN' %}selected{% endif %}>🇵🇪 PEN (Soles)</option>
+                        <option value="USD" {% if c.moneda == 'USD' %}selected{% endif %}>💵 USD (Dólares)</option>
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="stat-label">Tipo Cambio</label>
-                    <input type="number" step="0.001" name="tipo_cambio" class="form-control" value="{{ c.tipo_cambio|stringformat:'.3f' }}">
                 </div>
             </div>
 
-            <!-- SECCIÓN 2: TABLA DE PRODUCTOS -->
-            <h6 class="fw-bold mb-3"><i class="fa-solid fa-list-check me-2"></i> Detalle de Items</h6>
+            <!-- SECCIÓN 2: DETALLES -->
+            <div class="section-header-fintech">2. Detalle de Ítems e Inventario</div>
             <div class="table-responsive mb-3">
-                <table class="table table-sm align-middle" id="tablaItems">
-                    <thead class="bg-light">
-                        <tr class="small text-muted text-uppercase">
-                            <th style="width: 50%;">Producto / Descripción</th>
-                            <th style="width: 15%;">Cantidad</th>
-                            <th style="width: 15%;">Precio Unit.</th>
-                            <th style="width: 15%;">Subtotal</th>
-                            <th style="width: 5%;"></th>
+                <table class="table table-edit align-middle" id="tablaItems">
+                    <thead>
+                        <tr>
+                            <th style="width: 45%;">Producto / Descripción Técnica</th>
+                            <th style="width: 15%; text-align: center;">Cantidad</th>
+                            <th style="width: 15%; text-align: right;">P. Unitario</th>
+                            <th style="width: 15%; text-align: right;">Subtotal</th>
+                            <th style="width: 10%; text-align: center;"></th>
                         </tr>
                     </thead>
                     <tbody id="tbody">
                         {% for det in c.detalles.all %}
                         <tr class="item-row">
                             <td>
-                                <select name="prod_id[]" class="form-select form-select-sm mb-1">
+                                <select name="prod_id[]" class="form-select form-select-fintech form-select-sm mb-2">
                                     <option value="">-- Sin stock (Gasto/Servicio) --</option>
                                     {% for p in mis_productos %}
-                                    <option value="{{ p.id }}" {% if p == det.producto %}selected{% endif %}>{{ p.nombre_interno }}</option>
+                                    <option value="{{ p.id }}" {% if p == det.producto %}selected{% endif %}>📦 {{ p.nombre_interno }}</option>
                                     {% endfor %}
                                 </select>
-                                <input type="text" name="desc[]" class="form-control form-control-sm" value="{{ det.descripcion_libre|default:det.producto.nombre_interno }}" required>
-                            </td>
-                            <td><input type="number" step="0.01" name="cant[]" class="form-control form-control-sm" value="{{ det.cantidad|stringformat:'.2f' }}" required></td>
-                            <td><input type="number" step="0.01" name="prec[]" class="form-control form-control-sm" value="{{ det.precio_unitario|stringformat:'.2f' }}" required></td>
-                            <td class="text-end fw-bold">
-                                <span class="small opacity-50">{{ c.moneda }}</span> {{ det.subtotal_linea|floatformat:2 }}
+                                <input type="text" name="desc[]" class="form-control form-control-fintech form-control-sm" 
+                                       value="{% if det.producto %}{{ det.producto.nombre_interno }}{% else %}{{ det.descripcion_libre|default:'' }}{% endif %}" 
+                                       placeholder="Descripción libre..." required>
                             </td>
                             <td>
-                                <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button>
+                                <input type="number" step="0.01" name="cant[]" class="form-control form-control-fintech text-center" 
+                                       value="{{ det.cantidad|stringformat:'.2f' }}" required>
+                            </td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-transparent border-end-0 text-muted">Val.</span>
+                                    <input type="number" step="0.01" name="prec[]" class="form-control form-control-fintech border-start-0 text-end" 
+                                           value="{{ det.precio_unitario|stringformat:'.2f' }}" required>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <span class="fw-800 text-dark" style="font-size: 0.9rem;">
+                                    {{ c.moneda }} {{ det.subtotal_linea|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('tr').remove()">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 mb-4" onclick="agregarFila()">
-                <i class="fas fa-plus-circle me-1"></i> Añadir otro ítem
+            
+            <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold mb-5" onclick="agregarFila()" style="font-size: 0.8rem;">
+                <i class="fa-solid fa-plus-circle me-1"></i> Añadir Ítem Adicional
             </button>
 
-            <!-- SECCIÓN 3: MOTIVO Y CIERRE -->
-            <div class="p-3 rounded-4 bg-danger bg-opacity-5 border border-danger border-opacity-25 mb-4">
-                <label class="stat-label text-danger fw-bold">Motivo de la Modificación (Requerido para Auditoría)</label>
-                <textarea name="motivo_cambio" class="form-control mt-2" rows="2" required placeholder="Ej: Se corrigió el tipo de cambio y se añadió un producto faltante..."></textarea>
+            <!-- SECCIÓN 3: AUDITORÍA -->
+            <div class="audit-box mb-5">
+                <label class="form-label small fw-800 text-danger text-uppercase mb-3">
+                    <i class="fa-solid fa-shield-halved me-2"></i>Motivo de la Modificación (Obligatorio)
+                </label>
+                <textarea name="motivo_cambio" class="form-control form-control-fintech border-danger border-opacity-25" 
+                          rows="3" required placeholder="Describa el porqué de la edición técnica..."></textarea>
+                <div class="form-text text-danger mt-2" style="font-size: 0.7rem;">
+                    <strong>Atención:</strong> Esta acción generará un registro en el log de auditoría con su usuario.
+                </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="{% url 'lista_comprobantes' %}" class="btn btn-light rounded-3 px-4 text-muted">Descartar Cambios</a>
-                <button type="submit" class="btn btn-primary rounded-3 px-5 py-2 fw-bold shadow-sm">
-                    <i class="fa-solid fa-save me-2"></i> Actualizar Documento y Balances
+            <!-- ACCIONES -->
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 pt-4 border-top">
+                <a href="{% url 'lista_comprobantes' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                    <i class="fa-solid fa-chevron-left me-1"></i> Descartar y volver
+                </a>
+                <button type="submit" class="btn btn-primary px-5 py-3 rounded-4 shadow-sm fw-bold order-1 order-md-2 w-100 w-md-auto">
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Actualizar Documento y Balances
                 </button>
             </div>
         </form>
@@ -116,11 +209,16 @@
 <script>
     function agregarFila() {
         const tbody = document.getElementById('tbody');
-        const fila = document.querySelector('.item-row').cloneNode(true);
-        // Limpiar inputs de la nueva fila
-        fila.querySelectorAll('input').forEach(i => i.value = '');
-        fila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
-        tbody.appendChild(fila);
+        const filas = document.querySelectorAll('.item-row');
+        if (filas.length > 0) {
+            const nuevaFila = filas[0].cloneNode(true);
+            // Limpiar inputs de la nueva fila
+            nuevaFila.querySelectorAll('input').forEach(i => i.value = '');
+            nuevaFila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+            nuevaFila.querySelector('.text-end span').innerText = ''; // Limpiar subtotal visual
+            tbody.appendChild(nuevaFila);
+        }
     }
 </script>
+
 {% endblock %}

@@ -92,11 +92,17 @@
                                     </div>
                                 </td>
                                 <td class="text-end">
-                                    <a href="#" class="btn-action btn-action-edit me-2" title="Editar">
-                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    <!-- BOTÓN EDITAR -->
+                                    <a href="{% url 'editar_categoria' cat.id %}" class="btn-action btn-action-edit me-2" title="Editar">
+                                        <i class="fa-solid fa-pen-to-square text-warning"></i>
                                     </a>
-                                    <a href="#" class="btn-action btn-action-delete" title="Eliminar">
-                                        <i class="fa-solid fa-trash-can"></i>
+                                    
+                                    <!-- BOTÓN ELIMINAR con confirmación simple -->
+                                    <a href="{% url 'eliminar_categoria' cat.id %}" 
+                                    class="btn-action btn-action-delete" 
+                                    title="Eliminar"
+                                    onclick="return confirm('¿Estás seguro de eliminar esta categoría? Los productos asociados quedarán como Sin Categoría.')">
+                                        <i class="fa-solid fa-trash-can text-danger"></i>
                                     </a>
                                 </td>
                             </tr>

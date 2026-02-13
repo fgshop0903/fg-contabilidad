@@ -131,9 +131,16 @@
 
                         <!-- 4. Factura Link -->
                         <td>
-                            <a href="#" class="invoice-link small">
-                                <i class="fa-solid fa-file-invoice"></i> {{ d.comprobante.serie }}-{{ d.comprobante.numero }}
+                            <!-- Usamos d.comprobante.id para ir al visor de la factura -->
+                            <a href="{% url 'ver_comprobante_detalle' d.comprobante.id %}" class="text-decoration-none" title="Ver factura original">
+                                <div class="fw-800 text-primary" style="font-size: 0.85rem; letter-spacing: -0.5px;">
+                                    <i class="fa-solid fa-file-invoice me-1 opacity-75"></i>
+                                    {{ d.comprobante.codigo_factura }}
+                                </div>
                             </a>
+                            <small class="text-muted" style="font-size: 0.65rem;">
+                                ID Ref: #{{ d.comprobante.id }}
+                            </small>
                         </td>
 
                         <!-- 5. T.C. -->

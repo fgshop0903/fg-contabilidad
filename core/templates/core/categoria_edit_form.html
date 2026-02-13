@@ -1,0 +1,90 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Reutilizamos el estilo de inputs Fintech */
+    .form-control-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <!-- Usamos tu clase glass-card -->
+            <div class="glass-card p-4 p-md-5 border-0 shadow-sm">
+                
+                <!-- Encabezado Pro -->
+                <div class="text-center mb-5">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary) 0%, #035391 100%) !important;">
+                        <i class="fa-solid fa-layer-group fs-3"></i>
+                    </div>
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">Editar Categoría</h4>
+                    <p class="text-muted small">Actualice el nombre del clasificador de productos o gastos.</p>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="section-label">Nombre de la Categoría</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0" style="border-radius: 12px 0 0 12px; border-color: var(--glass-border);">
+                                <i class="fa-solid fa-tag text-muted small"></i>
+                            </span>
+                            <input type="text" name="nombre" class="form-control form-control-fintech border-start-0" 
+                                   value="{{ categoria.nombre }}" placeholder="Ej: Servicios Básicos" required 
+                                   style="border-radius: 0 12px 12px 0;">
+                        </div>
+                        <div class="form-text mt-2" style="font-size: 0.7rem;">
+                            <i class="fa-solid fa-circle-info me-1 text-primary"></i> 
+                            Este cambio se reflejará en todos los registros vinculados.
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <!-- Botón Principal -->
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold mb-3">
+                            <i class="fa-solid fa-arrows-rotate me-2"></i> Actualizar Categoría
+                        </button>
+                        
+                        <!-- Botón Cancelar -->
+                        <a href="{% url 'lista_categorias' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
+                            <i class="fa-solid fa-xmark me-1"></i> Cancelar y volver
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer Informativo -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1 text-primary"></i>
+                <small class="fw-bold">Módulo de Mantenimiento FG Network</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

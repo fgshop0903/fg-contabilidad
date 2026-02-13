@@ -1,0 +1,143 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Reutilizamos los estilos Fintech para consistencia */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .input-group-text-fintech {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+        color: var(--text-muted);
+    }
+
+    .form-control-fintech.with-icon {
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-label::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-10">
+            <div class="glass-card p-4 p-md-5">
+                
+                <!-- Encabezado con Icono -->
+                <div class="d-flex align-items-center gap-3 mb-5">
+                    <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px;">
+                        <i class="fa-solid fa-boxes-packing fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-800 text-dark mb-0" style="letter-spacing: -1px;">Editar Producto</h4>
+                        <p class="text-muted small mb-0">Actualice la información maestra del inventario.</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- SECCIÓN 1: IDENTIFICACIÓN -->
+                    <div class="section-label">1. Identificación Básica</div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">Nombre Estándar / Interno</label>
+                        <div class="input-group">
+                            <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-box"></i></span>
+                            <input type="text" name="nombre" class="form-control form-control-fintech with-icon" 
+                                   value="{{ p.nombre_interno }}" placeholder="Ej: Monitor Gamer 24p" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">SKU / Código</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-barcode"></i></span>
+                                <input type="text" name="sku" class="form-control form-control-fintech with-icon fw-bold text-primary" 
+                                       value="{{ p.sku }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Categoría</label>
+                            <select name="categoria" class="form-select form-select-fintech" required>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.id }}" {% if cat == p.categoria %}selected{% endif %}>📁 {{ cat.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: VALORIZACIÓN -->
+                    <div class="section-label">2. Precios Referenciales</div>
+                    
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Precio Compra (S/)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0" style="border-radius: 12px 0 0 12px;">S/</span>
+                                <input type="number" step="0.01" name="p_compra" class="form-control form-control-fintech border-start-0 fw-bold" 
+                                       value="{{ p.precio_compra_referencial|stringformat:'.2f' }}" style="border-radius: 0 12px 12px 0;">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Precio Venta Sugerido (S/)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary-soft text-primary border-primary border-opacity-10 border-end-0" style="border-radius: 12px 0 0 12px;">S/</span>
+                                <input type="number" step="0.01" name="p_venta" class="form-control form-control-fintech border-primary border-opacity-10 border-start-0 fw-800 text-primary" 
+                                       value="{{ p.precio_venta_referencial|stringformat:'.2f' }}" style="border-radius: 0 12px 12px 0;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 pt-4 border-top">
+                        <a href="{% url 'lista_productos' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Cancelar y volver
+                        </a>
+                        <button type="submit" class="btn btn-primary px-5 py-3 rounded-4 shadow-sm order-1 order-md-2 w-100 w-md-auto fw-bold">
+                            <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

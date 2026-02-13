@@ -1,0 +1,133 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos específicos para la vista de Ajuste */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: #ef4444; /* Rojo para denotar acción crítica */
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+        outline: none;
+    }
+
+    .product-context-box {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 15px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 25px;
+    }
+
+    .stat-label-fintech {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+    }
+
+    .alert-soft-warning {
+        background-color: rgba(245, 158, 11, 0.05);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        color: #b45309;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="glass-card p-4 p-md-5 border-0 shadow-sm border-top border-4 border-danger">
+                
+                <!-- Encabezado -->
+                <div class="text-center mb-4">
+                    <div class="bg-light text-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 56px; height: 56px;">
+                        <i class="fa-solid fa-sliders fs-4"></i>
+                    </div>
+                    <h4 class="fw-800 text-dark mb-1" style="letter-spacing: -1px;">Ajuste Técnico de Stock</h4>
+                    <p class="text-muted small">Modificación manual de existencias en almacén.</p>
+                </div>
+
+                <!-- Contexto del Producto -->
+                <div class="product-context-box d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="stat-label-fintech">PRODUCTO</span>
+                        <div class="fw-bold text-dark" style="font-size: 0.9rem;">{{ p.nombre_interno }}</div>
+                        <small class="text-muted">SKU: {{ p.sku }}</small>
+                    </div>
+                    <div class="text-end border-start ps-3">
+                        <span class="stat-label-fintech">STOCK ACTUAL</span>
+                        <div class="fw-800 text-primary" style="font-size: 1.2rem;">{{ p.stock_actual|floatformat:2 }}</div>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- TIPO DE MOVIMIENTO -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Tipo de Ajuste</label>
+                        <select name="tipo" class="form-select form-select-fintech fw-bold">
+                            <option value="Egreso" class="text-danger">🔻 MERMA / PÉRDIDA (Resta)</option>
+                            <option value="Ingreso" class="text-success">🔼 CORRECCIÓN (Suma)</option>
+                        </select>
+                    </div>
+
+                    <!-- CANTIDAD -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Cantidad a Procesar</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="cantidad" class="form-control form-control-fintech fw-800 border-end-0" 
+                                   placeholder="0.00" required style="font-size: 1.2rem;">
+                            <span class="input-group-text bg-transparent border-start-0" style="border-radius: 0 12px 12px 0; border-color: var(--glass-border);">
+                                <i class="fa-solid fa-boxes-stacked text-muted"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- MOTIVO -->
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">Justificación / Motivo</label>
+                        <textarea name="motivo" class="form-control form-control-fintech" rows="2" required 
+                                  placeholder="Ej: Error en conteo de inventario anual..."></textarea>
+                    </div>
+
+                    <!-- Advertencia -->
+                    <div class="alert alert-soft-warning d-flex align-items-center gap-3 mb-4">
+                        <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+                        <div>Esta acción actualizará el stock disponible y quedará registrada en el **Kardex** del producto.</div>
+                    </div>
+
+                    <!-- BOTONES -->
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-danger w-100 py-3 rounded-3 shadow-sm fw-bold mb-3">
+                            <i class="fa-solid fa-check-double me-2"></i> Aplicar Ajuste al Stock
+                        </button>
+                        
+                        <a href="{% url 'lista_productos' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Cancelar y volver
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer con Auditoría -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1 text-danger"></i>
+                <small class="fw-bold">Validado bajo protocolo de Control de Inventarios</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

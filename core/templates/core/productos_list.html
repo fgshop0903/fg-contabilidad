@@ -85,10 +85,11 @@
             <a href="{% url 'lista_categorias' %}" class="btn btn-white border shadow-sm rounded-3 px-3 small fw-bold">
                 <i class="fa-solid fa-layer-group me-1 text-primary"></i> Categorías
             </a>
-            <!-- Botón opcional para agregar producto si lo tienes -->
-            <button class="btn btn-primary shadow-sm px-4">
-                <i class="fa-solid fa-plus me-1"></i> Nuevo Producto
-            </button>
+
+            <a href="{% url 'registrar_compra_manual' %}" class="btn btn-primary shadow-sm px-4">
+                <i class="fa-solid fa-plus me-1"></i> Compra Manual
+            </a>
+
         </div>
     </div>
 
@@ -186,11 +187,19 @@
                         <!-- Acciones -->
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
-                                <a href="#" class="action-icon" title="Editar">
-                                    <i class="fa-solid fa-pen-to-square"></i>
+                                <!-- BOTÓN 1: EDITAR -->
+                                <a href="{% url 'editar_producto' p.id %}" class="action-icon" title="Editar Precios y Datos">
+                                    <i class="fa-solid fa-pen-to-square text-warning"></i>
                                 </a>
-                                <a href="#" class="action-icon" title="Ver Historial / Kardex">
-                                    <i class="fa-solid fa-clock-rotate-left"></i>
+
+                                <!-- BOTÓN 2: KARDEX (Lo haremos en el siguiente bloque) -->
+                                <a href="{% url 'producto_kardex' p.id %}" class="action-icon" title="Ver Historial / Kardex">
+                                    <i class="fa-solid fa-clock-rotate-left text-info"></i>
+                                </a>
+
+                                <!-- BOTÓN 3: AJUSTE (NUEVO) -->
+                                <a href="{% url 'ajustar_stock' p.id %}" class="action-icon" title="Ajuste Manual (Mermas)">
+                                    <i class="fa-solid fa-sliders text-danger"></i>
                                 </a>
                             </div>
                         </td>

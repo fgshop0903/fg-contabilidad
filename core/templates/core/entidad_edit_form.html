@@ -1,0 +1,152 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<style>
+    /* Estilos Fintech para inputs */
+    .form-control-fintech, .form-select-fintech {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control-fintech:focus, .form-select-fintech:focus {
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px var(--primary-soft);
+        outline: none;
+    }
+
+    .section-label-fintech {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 1px;
+        margin-bottom: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-label-fintech::after {
+        content: "";
+        flex-grow: 1;
+        height: 1px;
+        background: var(--glass-border);
+    }
+
+    .input-group-text-fintech {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+        color: var(--text-muted);
+        padding-left: 15px;
+    }
+
+    .form-control-fintech.with-icon {
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="glass-card p-4 p-md-5 border-0 shadow-sm">
+                
+                <!-- Encabezado Pro -->
+                <div class="d-flex align-items-center gap-3 mb-5">
+                    <div class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--primary) 0%, #035391 100%) !important;">
+                        <i class="fa-solid fa-user-pen fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-800 text-dark mb-0" style="letter-spacing: -1px;">Actualizar Entidad</h4>
+                        <p class="text-muted small mb-0">Modifique la información fiscal de su cliente o proveedor.</p>
+                    </div>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <!-- SECCIÓN 1: CLASIFICACIÓN -->
+                    <div class="section-label-fintech">1. Clasificación de Negocio</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Tipo de Entidad</label>
+                            <select name="tipo_entidad" class="form-select form-select-fintech" required>
+                                <option value="Proveedor" {% if e.tipo_entidad == 'Proveedor' %}selected{% endif %}>🏢 Solo Proveedor</option>
+                                <option value="Cliente" {% if e.tipo_entidad == 'Cliente' %}selected{% endif %}>🛍️ Solo Cliente</option>
+                                <option value="Ambos" {% if e.tipo_entidad == 'Ambos' %}selected{% endif %}>🔄 Ambos (Prov/Cli)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">Tipo de Documento</label>
+                            <select name="tipo_documento" class="form-select form-select-fintech" required>
+                                <option value="RUC" {% if e.tipo_documento == 'RUC' %}selected{% endif %}>RUC (Empresas)</option>
+                                <option value="DNI" {% if e.tipo_documento == 'DNI' %}selected{% endif %}>DNI (Personas)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 2: IDENTIDAD -->
+                    <div class="section-label-fintech">2. Identificación Legal</div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted">Número de Documento</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-id-card"></i></span>
+                                <input type="text" name="numero_documento" class="form-control form-control-fintech with-icon fw-bold" 
+                                       value="{{ e.numero_documento }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted">Nombre o Razón Social</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-building"></i></span>
+                                <input type="text" name="nombre_razon_social" class="form-control form-control-fintech with-icon" 
+                                       value="{{ e.nombre_razon_social }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 3: LOCALIZACIÓN -->
+                    <div class="section-label-fintech">3. Localización y Contacto</div>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-12">
+                            <label class="form-label small fw-bold text-muted">Dirección Fiscal / Domicilio</label>
+                            <div class="input-group">
+                                <span class="input-group-text input-group-text-fintech"><i class="fa-solid fa-location-dot"></i></span>
+                                <textarea name="direccion" class="form-control form-control-fintech with-icon" rows="2" 
+                                          placeholder="Av. Principal 123...">{{ e.direccion|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 pt-4 border-top">
+                        <a href="{% url 'lista_entidades' %}" class="text-muted text-decoration-none small fw-bold order-2 order-md-1">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Volver al listado
+                        </a>
+                        <div class="d-flex gap-3 w-100 w-md-auto order-1 order-md-2">
+                            <button type="submit" class="btn btn-primary px-5 py-3 rounded-4 shadow-sm fw-bold w-100 w-md-auto">
+                                <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer de Seguridad -->
+            <div class="text-center mt-4 opacity-50">
+                <i class="fa-solid fa-shield-halved me-1 text-primary"></i>
+                <small class="fw-bold">Gestión Segura de Directorio FG Network</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -105,6 +105,24 @@ class Producto(models.Model):
 
     def __str__(self): return self.nombre_interno
 
+class AjusteStock(models.Model):
+    TIPO_CHOICES = [('Ingreso', 'Ingreso (Suma)'), ('Egreso', 'Egreso (Resta)')]
+    
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='ajustes')
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    motivo = models.TextField() # Ej: "Producto dañado en almacén"
+    fecha = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+
+    class Meta:
+        verbose_name = "Ajuste de Stock"
+        verbose_name_plural = "Ajustes de Stock"
+
+    def __str__(self):
+        return f"{self.tipo} - {self.producto.nombre_interno} ({self.cantidad})"
+    
 # 3.2 Comprobante (Entidad Padre)
 class Comprobante(models.Model):
     OP_CHOICES = [
