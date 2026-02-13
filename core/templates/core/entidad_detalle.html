@@ -97,8 +97,7 @@
 
         <!-- Card: Saldo Pendiente -->
         <div class="col-lg-6">
-            {% with has_debt=d_pen > 0 or d_usd > 0 %}
-            <div class="glass-card stat-card-fintech border-0 shadow-sm border-start border-4 {% if has_debt %}border-danger{% else %}border-success{% endif %}">
+            <div class="glass-card stat-card-fintech border-0 shadow-sm border-start border-4 {% if d_pen > 0 or d_usd > 0 %}border-danger{% else %}border-success{% endif %}">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="p-2 rounded-3 {% if has_debt %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %}">
                         <i class="fa-solid fa-hand-holding-dollar fs-5"></i>
@@ -116,7 +115,6 @@
                     </div>
                 </div>
             </div>
-            {% endwith %}
         </div>
     </div>
 

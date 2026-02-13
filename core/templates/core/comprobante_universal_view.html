@@ -56,7 +56,13 @@
             {% for det in c.detalles.all %}
             <tr class="small">
                 <td class="text-center">{{ forloop.counter }}</td>
-                <td>{{ det.descripcion_libre|default:det.producto.nombre_interno|upper }}</td>
+                <td>
+                    {% if det.producto %}
+                        {{ det.producto.nombre_interno|upper }}
+                    {% else %}
+                        {{ det.descripcion_libre|default:"Sin descripción"|upper }}
+                    {% endif %}
+                </td>
                 <td class="text-center">{{ det.cantidad|floatformat:1 }}</td>
                 <td class="text-end">{{ c.moneda }} {{ det.precio_unitario|floatformat:2 }}</td>
                 <td class="text-end fw-bold">{{ c.moneda }} {{ det.total_linea|floatformat:2 }}</td>
