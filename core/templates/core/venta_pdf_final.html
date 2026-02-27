@@ -1,97 +1,168 @@
 {% extends 'core/base.html' %}
 {% block content %}
+
 <style>
-    .quotation-sheet {
+    /* 1. CONFIGURACIÓN DE PANTALLA (WEB) */
+    .doc-container {
+        background-color: #cbd5e1;
+        padding: 40px 10px;
+        min-height: 100vh;
+        overflow-x: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .top-action-bar {
+        width: 210mm;
+        max-width: 95%;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 16px !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 1rem 1.5rem !important;
+    }
+
+    .frozen-sheet {
         background: white !important;
-        margin: 0 auto;
-        padding: 50px !important;
-        max-width: 850px;
-        min-height: 1050px;
-        color: #1e293b !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        width: 210mm; 
+        min-height: 297mm;
+        padding: 15mm !important;
+        color: #000 !important;
+        font-family: Arial, sans-serif;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        box-sizing: border-box;
+        position: relative;
     }
-    .totals-grid {
-        display: grid; grid-template-columns: 1fr auto;
-        gap: 8px; max-width: 320px; margin-left: auto;
+
+    .table-layout { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .border-box { border: 1px solid #000 !important; padding: 10px; }
+
+    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .items-table th { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px; font-size: 12px; background-color: #f1f5f9 !important; }
+    .items-table td { border-bottom: 1px solid #eee; padding: 8px; font-size: 12px; }
+
+    @media (max-width: 768px) {
+        .top-action-bar { width: 100% !important; padding: 0.8rem !important; }
     }
+
     @media print {
-        .sidebar, .navbar, .d-print-none, .btn { display: none !important; }
-        .main-content, main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-        .quotation-sheet { box-shadow: none !important; border: none !important; }
+        .sidebar, .navbar, .d-print-none, .btn, .alert, .top-action-bar { display: none !important; }
+        body, .doc-container { background: white !important; padding: 0 !important; margin: 0 !important; }
+        .frozen-sheet { box-shadow: none !important; border: none !important; width: 100% !important; padding: 10mm !important; min-height: initial !important; }
+        @page { size: A4; margin: 0; }
     }
 </style>
 
-<div class="container py-4 d-print-none text-end">
-    <a href="{% url 'lista_comprobantes' %}" class="btn btn-light border btn-sm">Volver</a>
-    <button onclick="window.print()" class="btn btn-primary btn-sm fw-bold">
-        <i class="fas fa-file-pdf"></i> DESCARGAR PDF
-    </button>
-</div>
-
-<div class="quotation-sheet shadow-lg mb-5">
-    <!-- Cabecera -->
-    <div class="d-flex justify-content-between align-items-start mb-5">
-        <div>
-            {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px;" class="mb-3">{% endif %}
-            <h4 class="fw-bold mb-1" style="color: #1370b6;">{{ empresa.nombre|upper }}</h4>
-            <div class="small text-muted">RUC: {{ empresa.ruc }}<br>{{ empresa.direccion }}</div>
+<div class="doc-container">
+    <!-- BARRA DE ACCIONES -->
+    <div class="alert top-action-bar d-print-none d-flex justify-content-between align-items-center shadow-sm">
+        <div class="info-doc">
+            <h6 class="mb-0 fw-bold">Venta Registrada</h6>
+            <small class="text-muted">Documento: {{ c.serie }}-{{ c.numero }}</small>
         </div>
-        <div style="width: 220px;">
-            <div class="p-3 text-center border border-2 rounded-4" style="border-color: #28a745 !important;">
-                <h5 class="mb-1 fw-bold text-success">{{ c.tipo_documento|upper }}</h5>
-                <h3 class="mb-0 fw-bold">{{ c.serie }}-{{ c.numero }}</h3>
-            </div>
-            <div class="text-center mt-2 small">FECHA: {{ c.fecha_emision|date:"d/m/Y" }}</div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'lista_comprobantes' %}" class="btn btn-light border btn-sm">Volver</a>
+            <button onclick="window.print()" class="btn btn-primary btn-sm fw-bold">
+                <i class="fa-solid fa-file-arrow-down me-1"></i> DESCARGAR PDF
+            </button>
         </div>
     </div>
 
-    <!-- Cliente -->
-    <div class="p-3 rounded-4 mb-4" style="background: #f8fafc; border-left: 5px solid #28a745;">
-        <small class="text-success fw-bold text-uppercase d-block mb-1">Cliente</small>
-        <h6 class="fw-bold mb-0">{{ c.entidad.nombre_razon_social|upper }}</h6>
-        <p class="mb-0 small">RUC/DNI: {{ c.entidad.numero_documento }}</p>
-    </div>
-
-    <!-- Tabla -->
-    <table class="table table-bordered border-light-subtle">
-        <thead style="background: #f1f5f9;">
-            <tr class="small text-center">
-                <th>IT.</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>P. UNIT.</th><th>TOTAL</th>
+    <!-- LA HOJA CONGELADA -->
+    <div class="frozen-sheet">
+        <!-- CABECERA -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px; margin-bottom: 10px;">{% endif %}
+                    <div style="font-size: 12px;">
+                        <strong style="font-size: 16px; color: #1370b6;">{{ empresa.nombre|upper }}</strong><br>
+                        <strong>RUC:</strong> {{ empresa.ruc }}<br>
+                        {{ empresa.direccion }}<br>
+                        <strong>Telf:</strong> {{ empresa.telefono|default:"-" }} | <strong>Email:</strong> {{ empresa.correo|default:"-" }}
+                    </div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top;">
+                    <div class="border-box" style="display: inline-block; text-align: center; min-width: 180px; border-color: #28a745 !important;">
+                        <span style="font-size: 11px; font-weight: bold; color: #28a745;">{{ c.tipo_documento|upper }}</span><br>
+                        <span style="font-size: 22px; font-weight: bold;">{{ c.serie }}-{{ c.numero }}</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px;"><strong>FECHA EMISIÓN:</strong> {{ c.fecha_emision|date:"d/m/Y" }}</div>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            {% for det in c.detalles.all %}
-            <tr class="small">
-                <td class="text-center">{{ forloop.counter }}</td>
-                <td>{{ det.descripcion_libre|upper }}</td>
-                <td class="text-center">{{ det.cantidad|floatformat:1 }}</td>
-                <td class="text-end">{{ c.moneda }} {{ det.precio_unitario|floatformat:2 }}</td>
-                <td class="text-end fw-bold">{{ c.moneda }} {{ det.subtotal_linea|floatformat:2 }}</td>
+        </table>
+
+        <!-- CLIENTE -->
+        <table class="table-layout border-box" style="border-left: 5px solid #28a745 !important;">
+            <tr>
+                <td style="padding: 10px;">
+                    <small style="color: #28a745; font-weight: bold; text-transform: uppercase; font-size: 10px;">Información del Cliente</small>
+                    <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">{{ c.entidad.nombre_razon_social|upper }}</div>
+                    <div style="font-size: 12px;"><strong>RUC/DNI:</strong> {{ c.entidad.numero_documento }}</div>
+                    <div style="font-size: 11px;"><strong>DIRECCIÓN:</strong> {{ c.entidad.direccion|default:"-" }}</div>
+                </td>
             </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        </table>
 
-    <!-- Totales -->
-    <div class="totals-grid mt-4">
-        {% if mostrar_igv %}
-        <div class="text-end small text-muted">SUB TOTAL:</div>
-        <div class="text-end fw-bold">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</div>
-        <div class="text-end small text-muted">IGV (18%):</div>
-        <div class="text-end fw-bold">{{ c.moneda }} {{ c.igv|floatformat:2 }}</div>
-        {% endif %}
-        <div class="text-end fw-bold fs-5 text-success">TOTAL:</div>
-        <div class="text-end fw-bold fs-5 text-success">{{ c.moneda }} {{ c.total|floatformat:2 }}</div>
-    </div>
+        <!-- TABLA DE ITEMS -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="text-align: left;">DESCRIPCIÓN</th>
+                    <th style="width: 60px;">CANT.</th>
+                    <th style="width: 100px;">P. UNIT.</th>
+                    <th style="width: 100px;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for det in c.detalles.all %}
+                <tr>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td style="text-transform: uppercase;">{{ det.descripcion_libre|upper }}</td>
+                    <td style="text-align: center;">{{ det.cantidad|floatformat:1 }}</td>
+                    <td style="text-align: right;">{{ c.moneda }} {{ det.precio_unitario|floatformat:2 }}</td>
+                    <td style="text-align: right; font-weight: bold;">{{ c.moneda }} {{ det.subtotal_linea|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-    <!-- Cuentas -->
-    <div class="mt-5 pt-3 border-top small text-muted">
-        <strong>CUENTAS BANCARIAS:</strong><br>
-        {% for b in bancos %}
-            {{ b.banco }} ({{ b.moneda }}): {{ b.numero_cuenta }} | CCI: {{ b.cci|default:"-" }}<br>
-        {% endfor %}
-        <p class="mt-4 text-center italic">Este documento es un comprobante de control interno emitido por {{ empresa.nombre }}.</p>
+        <!-- TOTALES Y CUENTAS -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    <div style="font-size: 11px; font-weight: bold; color: #1370b6; margin-bottom: 5px;">CUENTAS BANCARIAS:</div>
+                    {% for b in bancos %}
+                    <div style="font-size: 10px; margin-bottom: 3px;">
+                        {{ b.banco }} ({{ b.moneda }}): <strong>{{ b.numero_cuenta }}</strong>
+                        {% if b.cci %}<br><span style="color:#666">CCI: {{ b.cci }}</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                </td>
+                <td style="width: 40%;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        {% if mostrar_igv %}
+                        <tr><td>SUB TOTAL</td><td style="text-align: right;">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</td></tr>
+                        <tr><td style="border-bottom: 1px solid #000; padding-bottom: 5px;">IGV (18%)</td><td style="text-align: right; border-bottom: 1px solid #000;">{{ c.moneda }} {{ c.igv|floatformat:2 }}</td></tr>
+                        {% endif %}
+                        <tr>
+                            <td style="font-size: 18px; font-weight: bold; padding-top: 10px;">TOTAL</td>
+                            <td style="text-align: right; font-size: 18px; font-weight: bold; padding-top: 10px; color: #28a745;">
+                                {{ c.moneda }} {{ c.total|floatformat:2 }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- FOOTER -->
+        <div style="margin-top: 50px; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+            <p style="font-size: 10px; color: #666;">Este documento es un comprobante de control interno emitido por FG SHOP.</p>
+        </div>
     </div>
 </div>
 {% endblock %}

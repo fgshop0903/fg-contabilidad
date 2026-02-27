@@ -1,73 +1,176 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div class="container my-4">
-    <div class="alert alert-success d-flex justify-content-between align-items-center d-print-none shadow-sm border-0">
-        <div><i class="fas fa-check-circle me-2"></i> <strong>VERIFIQUE SU VENTA.</strong> El stock se descontará al finalizar.</div>
+
+<style>
+    /* 1. CONFIGURACIÓN DE PANTALLA (WEB) */
+    .doc-container {
+        background-color: #cbd5e1;
+        padding: 40px 10px;
+        min-height: 100vh;
+        overflow-x: auto; /* Scroll lateral en móvil */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* BARRA DE ACCIONES RESPONSIVA */
+    .top-action-bar {
+        width: 210mm;
+        max-width: 95%;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 16px !important;
+        border: 1px solid var(--glass-border) !important;
+        padding: 1rem 1.5rem !important;
+    }
+
+    /* LA HOJA FIJA (A4) */
+    .frozen-sheet {
+        background: white !important;
+        width: 210mm; 
+        min-height: 297mm;
+        padding: 15mm !important;
+        color: #000 !important;
+        font-family: Arial, sans-serif;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        box-sizing: border-box;
+        position: relative;
+    }
+
+    /* TABLAS ESTRUCTURALES (NO SE MUEVEN) */
+    .table-layout { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .border-box { border: 1px solid #000 !important; padding: 10px; }
+
+    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .items-table th {
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+        padding: 8px; font-size: 12px;
+        background-color: #f1f5f9 !important;
+    }
+    .items-table td { border-bottom: 1px solid #eee; padding: 8px; font-size: 12px; }
+
+    @media (max-width: 768px) {
+        .top-action-bar { width: 100% !important; padding: 0.8rem !important; }
+        .info-doc h6 { font-size: 0.85rem; }
+    }
+
+    @media print {
+        .sidebar, .navbar, .d-print-none, .btn, .alert, .top-action-bar { display: none !important; }
+        body, .doc-container { background: white !important; padding: 0 !important; margin: 0 !important; }
+        .frozen-sheet { box-shadow: none !important; border: none !important; width: 100% !important; padding: 10mm !important; }
+    }
+</style>
+
+<div class="doc-container">
+    <!-- BARRA DE ACCIONES -->
+    <div class="alert top-action-bar d-print-none d-flex justify-content-between align-items-center shadow-sm">
+        <div class="info-doc">
+            <h6 class="mb-0 fw-bold text-success"><i class="fas fa-check-circle me-1"></i> Modo Vista Previa</h6>
+            <small class="text-muted">Verifique los datos de la venta</small>
+        </div>
         <div class="d-flex gap-2">
-            <a href="{% url 'registrar_venta_manual' %}" class="btn btn-light btn-sm border">Corregir</a>
+            <a href="{% url 'registrar_venta_manual' %}" class="btn btn-light border btn-sm fw-bold">CORREGIR</a>
             <form method="POST" action="{% url 'guardar_venta_manual_final' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success btn-sm fw-bold">FINALIZAR Y REGISTRAR VENTA</button>
+                <button type="submit" class="btn btn-success btn-sm fw-bold">REGISTRAR VENTA</button>
             </form>
         </div>
     </div>
 
-    <!-- HOJA FORMAL -->
-    <div class="mx-auto bg-white shadow-lg p-5" style="max-width: 850px; min-height: 1000px; color: #1a1a1a; -webkit-print-color-adjust: exact;">
-        <div class="row mb-4">
-            <div class="col-8">
-                {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px; margin-bottom: 15px;">{% endif %}
-                <h4 class="fw-bold mb-0" style="color: #0E6CB1;">{{ empresa.nombre|upper }}</h4>
-                <div class="small text-muted">RUC: {{ empresa.ruc }}<br>{{ empresa.direccion }}</div>
-            </div>
-            <div class="col-4 text-center">
-                <div class="p-3" style="border: 2px solid #28a745; border-radius: 10px;">
-                    <h5 class="mb-1 fw-bold text-success">{% if c.modo == 'oficial' %}BOLETA DE VENTA{% else %}NOTA DE VENTA{% endif %}</h5>
-                    <h3 class="mb-0 fw-bold">{{ c.serie_numero }}</h3>
-                </div>
-                <div class="mt-2 small fw-bold">Fecha: {{ c.fecha }}</div>
-            </div>
-        </div>
+    <!-- LA HOJA CONGELADA -->
+    <div class="frozen-sheet">
+        <!-- CABECERA -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    {% if empresa.logo %}<img src="{{ empresa.logo.url }}" style="max-height: 80px; margin-bottom: 10px;">{% endif %}
+                    <div style="font-size: 12px;">
+                        <strong style="font-size: 16px; color: #1370b6;">{{ empresa.nombre|upper }}</strong><br>
+                        <strong>RUC:</strong> {{ empresa.ruc }}<br>
+                        {{ empresa.direccion }}
+                    </div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top;">
+                    <div class="border-box" style="display: inline-block; text-align: center; min-width: 180px; border-color: {% if c.modo == 'oficial' %}#0d6efd{% else %}#28a745{% endif %} !important;">
+                        <span style="font-size: 11px; font-weight: bold; color: {% if c.modo == 'oficial' %}#0d6efd{% else %}#28a745{% endif %};">
+                            {% if c.modo == 'oficial' %}BOLETA DE VENTA{% else %}NOTA DE VENTA{% endif %}
+                        </span><br>
+                        <span style="font-size: 22px; font-weight: bold;">{{ c.serie_numero }}</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 12px;"><strong>FECHA:</strong> {{ c.fecha }}</div>
+                </td>
+            </tr>
+        </table>
 
-        <div class="p-3 rounded-3 mb-4" style="background: #f8f9fa; border-left: 4px solid #28a745;">
-            <p class="mb-1"><strong>Cliente:</strong> {{ c.razon_social|upper }}</p>
-            <p class="mb-0"><strong>RUC/DNI:</strong> {{ c.ruc_dni }}</p>
-        </div>
+        <!-- CLIENTE -->
+        <table class="table-layout border-box" style="border-left: 5px solid {% if c.modo == 'oficial' %}#0d6efd{% else %}#28a745{% endif %} !important;">
+            <tr>
+                <td style="padding: 10px;">
+                    <small style="color: {% if c.modo == 'oficial' %}#0d6efd{% else %}#28a745{% endif %}; font-weight: bold; text-transform: uppercase; font-size: 10px;">Datos del Cliente</small>
+                    <div style="font-size: 14px; font-weight: bold; margin-top: 5px;">{{ c.razon_social|upper }}</div>
+                    <div style="font-size: 12px;"><strong>RUC/DNI:</strong> {{ c.ruc_dni }}</div>
+                </td>
+            </tr>
+        </table>
 
-        <table class="table table-bordered">
-            <thead class="bg-light">
-                <tr class="small text-center"><th>ITEM</th><th>DESCRIPCIÓN</th><th>CANT.</th><th>P. UNIT.</th><th>TOTAL</th></tr>
+        <!-- TABLA DE ITEMS -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="text-align: left;">DESCRIPCIÓN</th>
+                    <th style="width: 60px;">CANT.</th>
+                    <th style="width: 100px;">P. UNIT.</th>
+                    <th style="width: 100px;">TOTAL</th>
+                </tr>
             </thead>
             <tbody>
                 {% for item in c.items %}
                 <tr>
-                    <td class="text-center">{{ forloop.counter }}</td>
-                    <td class="small">{{ item.descripcion|upper }}</td>
-                    <td class="text-center">{{ item.cantidad }}</td>
-                    <td class="text-end">{{ item.precio|floatformat:2 }}</td>
-                    <td class="text-end fw-bold">{{ item.subtotal|floatformat:2 }}</td>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td style="text-transform: uppercase;">{{ item.descripcion }}</td>
+                    <td style="text-align: center;">{{ item.cantidad }}</td>
+                    <td style="text-align: right;">{{ item.precio|floatformat:2 }}</td>
+                    <td style="text-align: right; font-weight: bold;">{{ item.subtotal|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <div class="row justify-content-end mt-4">
-            <div class="col-5">
-                <table class="table table-sm table-borderless">
-                    {% if c.modo == 'oficial' %}
-                    <tr><td class="text-end">SUB TOTAL:</td><td class="text-end">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</td></tr>
-                    <tr><td class="text-end">IGV (18%):</td><td class="text-end">{{ c.moneda }} {{ c.igv|floatformat:2 }}</td></tr>
-                    {% endif %}
-                    <tr class="border-top border-dark"><td class="text-end fw-bold">TOTAL:</td><td class="text-end fw-bold fs-5 text-success">{{ c.moneda }} {{ c.total|floatformat:2 }}</td></tr>
-                </table>
-            </div>
-        </div>
+        <!-- TOTALES -->
+        <table class="table-layout">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    <div style="font-size: 11px; font-weight: bold; color: #28a745; margin-bottom: 5px;">INFORMACIÓN ADICIONAL:</div>
+                    <div style="font-size: 10px; color: #666;">Comprobante de control interno. El stock se actualizará al confirmar.</div>
+                </td>
+                <td style="width: 40%;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        
+                        <!-- Forzamos minúsculas con |lower para comparar -->
+                        {% if c.modo|lower == "oficial" %}
+                        <tr>
+                            <td style="padding: 3px 0;">SUB TOTAL</td>
+                            <td style="text-align: right;">{{ c.moneda }} {{ c.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 3px 0; border-bottom: 1px solid #000;">IGV (18%)</td>
+                            <td style="text-align: right; border-bottom: 1px solid #000;">{{ c.moneda }} {{ c.igv|floatformat:2 }}</td>
+                        </tr>
+                        {% endif %}
 
-        <div class="mt-5 small text-muted border-top pt-3">
-            <strong>CUENTAS:</strong> 
-            {% for b in bancos %}{{ b.banco }}: {{ b.numero_cuenta }} | {% endfor %}
-            <p class="mt-2 italic">Este es un comprobante de control interno emitido por FG SHOP.</p>
-        </div>
+                        <tr>
+                            <td style="font-size: 18px; font-weight: bold; padding-top: 10px;">TOTAL</td>
+                            <td style="text-align: right; font-size: 18px; font-weight: bold; padding-top: 10px; color: {% if c.modo|lower == 'oficial' %}#0d6efd{% else %}#28a745{% endif %};">
+                                {{ c.moneda }} {{ c.total|floatformat:2 }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
     </div>
 </div>
 {% endblock %}

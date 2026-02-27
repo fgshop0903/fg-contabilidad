@@ -8,6 +8,7 @@ from django.forms.models import model_to_dict
 from .models import LogAuditoria
 import pdfplumber
 import re
+import decimal
 
 
 def procesar_xml_sunat(archivo_xml):
@@ -198,7 +199,6 @@ def procesar_pdf_sunat(archivo_pdf):
 
     return datos
 
-# core/utils.py
 
 def procesar_xml_retencion(archivo_xml):
     """
@@ -247,7 +247,6 @@ def procesar_xml_retencion(archivo_xml):
 
     return datos
 
-# core/utils.py
 
 def procesar_pdf_impuestos(archivo_pdf):
     """
@@ -298,3 +297,35 @@ def procesar_pdf_impuestos(archivo_pdf):
             datos['nro_orden'] = match_op.group(1) if match_op else None
 
     return datos
+
+def aplicar_pago_en_cascada(monto_a_pagar, cuenta=None, prestamo=None):
+    """
+    Reparte el dinero entre las cuotas pendientes de forma cronológica.
+    Funciona para Facturas (cuenta) o para Préstamos (prestamo).
+    """
+    monto_restante = decimal.Decimal(str(monto_a_pagar))
+    
+    # 1. Buscamos las cuotas pendientes ordenadas por fecha
+    if cuenta:
+        cuotas_pendientes = cuenta.cuotas.filter(pagada=False).order_by('fecha_vencimiento')
+    else:
+        cuotas_pendientes = prestamo.cuotas.filter(pagada=False).order_by('fecha_vencimiento')
+
+    # 2. Empezamos el reparto (Efecto Dominó)
+    for cuota in cuotas_pendientes:
+        if monto_restante <= 0:
+            break
+        
+        if monto_restante >= cuota.saldo_cuota:
+            # El dinero alcanza para matar esta cuota completa
+            monto_restante -= cuota.saldo_cuota
+            cuota.saldo_cuota = 0
+            cuota.pagada = True
+            cuota.save()
+        else:
+            # El dinero solo alcanza para un abono parcial de la cuota
+            cuota.saldo_cuota -= monto_restante
+            monto_restante = 0
+            cuota.save()
+            
+    return monto_restante # Devuelve si sobró dinero por algún motivo

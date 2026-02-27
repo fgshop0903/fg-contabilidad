@@ -300,7 +300,13 @@ class Cuota(models.Model):
     fecha_vencimiento = models.DateField()
     pagada = models.BooleanField(default=False)
     fecha_pago = models.DateField(null=True, blank=True)
+    saldo_cuota = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+            if self.saldo_cuota is None:
+                self.saldo_cuota = self.monto
+            super().save(*args, **kwargs)
+            
     class Meta:
         verbose_name = "Cuota de Pago/Cobro"
         verbose_name_plural = "Cuotas de Pago/Cobro"
@@ -329,27 +335,33 @@ class Notificacion(models.Model):
 @receiver(post_save, sender=MovimientoFinanciero)
 def actualizar_saldo_al_guardar(sender, instance, created, **kwargs):
     if created:
-        import decimal
-        # Forzamos que tanto el monto como el itf sean Decimales antes de operar
-        monto_decimal = decimal.Decimal(str(instance.monto))
-        itf_decimal = decimal.Decimal(str(instance.itf_monto))
-
-        if instance.cuenta_bancaria:
-            obj = instance.cuenta_bancaria
-            if instance.tipo == 'Ingreso':
-                # Ahora la operación es entre dos Decimales: ÉXITO
-                obj.saldo_actual += (monto_decimal - itf_decimal)
-            else:
-                obj.saldo_actual -= (monto_decimal + itf_decimal)
-            obj.save()
-            
-        elif instance.caja:
+        print(f"--- DEBUG SENSOR: Nuevo movimiento detectado de {instance.monto} ---")
+        
+        # Caso CAJA
+        if instance.caja:
+            print(f"--- DEBUG SENSOR: Vinculado a CAJA: {instance.caja.nombre} ---")
             obj = instance.caja
             if instance.tipo == 'Ingreso':
-                obj.saldo_actual += monto_decimal
+                obj.saldo_actual += instance.monto
             else:
-                obj.saldo_actual -= monto_decimal
+                obj.saldo_actual -= instance.monto
             obj.save()
+            print(f"--- DEBUG SENSOR: Saldo actualizado con éxito: {obj.saldo_actual} ---")
+            
+        # Caso BANCO
+        elif instance.cuenta_bancaria:
+            print(f"--- DEBUG SENSOR: Vinculado a BANCO: {instance.cuenta_bancaria.banco} ---")
+            obj = instance.cuenta_bancaria
+            if instance.tipo == 'Ingreso':
+                obj.saldo_actual += (instance.monto - instance.itf_monto)
+            else:
+                obj.saldo_actual -= (instance.monto + instance.itf_monto)
+            obj.save()
+            print(f"--- DEBUG SENSOR: Saldo actualizado con éxito: {obj.saldo_actual} ---")
+        
+        # Caso FALLIDO
+        else:
+            print("--- !!! ALERTA !!!: El movimiento se creó pero NO TIENE caja ni banco vinculado ---")
 
 
 @receiver(post_delete, sender=MovimientoFinanciero)
@@ -371,6 +383,23 @@ def revertir_saldo_al_eliminar(sender, instance, **kwargs):
         else:
             obj.saldo_actual += instance.monto
         obj.save()
+
+    # 2. REVERTIR LA DEUDA (CUENTAESTADO) - ¡ESTO ES LO QUE FALTABA!
+    if instance.comprobante:
+        cuenta = instance.comprobante.cuenta_estado.first()
+        if cuenta:
+            # Si borramos un cobro (Venta), el cliente vuelve a deber
+            # Si borramos un pago (Compra), nosotros volvemos a deber
+            cuenta.saldo_pendiente += instance.monto
+            
+            # Ajustar el estado automáticamente
+            if cuenta.saldo_pendiente >= cuenta.monto_total:
+                cuenta.estado = 'Pendiente'
+            else:
+                cuenta.estado = 'Parcial'
+            
+            cuenta.save()
+            print(f"DEBUG: Deuda de {instance.comprobante.codigo_factura} restaurada a {cuenta.saldo_pendiente}")
 
 class CertificadoRetencion(models.Model):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)

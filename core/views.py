@@ -21,6 +21,7 @@ from django.contrib.auth import logout as auth_logout
 import re
 from itertools import chain
 from operator import attrgetter
+from .utils import aplicar_pago_en_cascada
 
 @login_required
 def seleccionar_empresa(request):
@@ -421,7 +422,8 @@ def registrar_flete(request):
                 flete_por_unidad = parte_proporcional_flete / detalle.cantidad
                 producto = detalle.producto
                 if producto:
-                    producto.precio_compra_referencial += flete_por_unidad
+                    # Sumamos el flete al costo base para tener el "Landed Cost" real
+                    producto.precio_compra_referencial += flete_por_unidad 
                     producto.save()
             
         return redirect('dashboard')
@@ -617,7 +619,12 @@ def dashboard_analitico(request):
     # --- 2. LÓGICA MULTIMONEDA (BANCOS) ---
     tc_dia = TipoCambioDia.objects.filter(fecha=hoy).first()
     factor = tc_dia.venta if tc_dia else decimal.Decimal('3.75')
+
     cajas_empresa = Caja.objects.filter(empresa_id=emp_id)
+    print(f"DEBUG: Cantidad de cajas encontradas: {cajas_empresa.count()}")
+    for c in cajas_empresa:
+        print(f"DEBUG: Caja: {c.nombre} | Saldo: {c.saldo_actual} | Moneda: {c.moneda}")
+
     bancos_empresa = Cuenta_Bancaria.objects.filter(empresa_id=emp_id)
     saldo_pen = (cajas_empresa.filter(moneda='PEN').aggregate(Sum('saldo_actual'))['saldo_actual__sum'] or 0) + \
                 (bancos_empresa.filter(moneda='PEN').aggregate(Sum('saldo_actual'))['saldo_actual__sum'] or 0)
@@ -747,7 +754,7 @@ def registrar_devolucion(request):
         monto_reembolso = decimal.Decimal(request.POST.get('monto_reembolso'))
 
         # 1. Ajustar Inventario
-        producto.stock_actual -= cantidad
+        producto.stock_actual += cantidad
         producto.save()
 
         # 2. Registrar Ingreso a Caja (Módulo 7)
@@ -861,6 +868,7 @@ def configurar_cuotas(request, cuenta_id):
                 cuenta=cuenta,
                 numero_cuota=i,
                 monto=monto_cuota,
+                saldo_cuota=monto_cuota,
                 fecha_vencimiento=fecha_venc
             )
         
@@ -895,6 +903,7 @@ def configurar_cuotas_prestamo(request, prestamo_id):
                 prestamo=prestamo,
                 numero_cuota=i,
                 monto=monto_cuota,
+                saldo_cuota=monto_cuota,
                 fecha_vencimiento=fecha_venc
             )
         
@@ -1099,12 +1108,19 @@ def eliminar_entidad(request, pk):
     entidad.delete()
     return redirect('lista_entidades')
 
-# --- MANTENIMIENTO DE INVENTARIO (RF-07) ---
+
 @login_required
 def lista_productos(request):
     emp_id = request.session.get('empresa_id')
-    productos = Producto.objects.filter(empresa_id=emp_id)
-    return render(request, 'core/productos_list.html', {'productos': productos})
+    productos = Producto.objects.filter(empresa_id=emp_id).order_by('nombre_interno')
+    # NUEVO: Enviamos categorías para el filtro
+    categorias = CategoriaProducto.objects.all() 
+    
+    return render(request, 'core/productos_list.html', {
+        'productos': productos,
+        'categorias': categorias
+    })
+
 
 @login_required
 def lista_categorias(request):
@@ -1258,6 +1274,12 @@ def registrar_pago_comprobante(request, pk):
             else:
                 cuenta.estado = 'Parcial'
             cuenta.save()
+
+            # --- LA MEJORA MAESTRA (Sincronización con Cronograma) ---
+            # Si la factura tiene cuotas programadas, repartimos el pago
+            if cuenta.cuotas.exists():
+                aplicar_pago_en_cascada(monto_pago, cuenta=cuenta)
+            # ---------------------------------------------------------
 
         return redirect('lista_comprobantes')
 
@@ -1626,37 +1648,76 @@ def producto_kardex(request, pk):
         'movimientos': kardex_final
     })
 
-
 @login_required
 def registrar_venta_manual(request):
     emp_id = request.session.get('empresa_id')
     empresa = get_object_or_404(Empresa, id=emp_id)
 
     if request.method == 'POST':
-        # 1. CAPTURAMOS DATOS Y CALCULAMOS
-        modo = request.POST.get('modo_tributario') # 'oficial' o 'interno'
+        # 1. Captura básica de cabecera
+        modo_raw = request.POST.get('modo_tributario', 'interno')
+        modo = str(modo_raw).strip().lower() 
+
+        forma_pago = request.POST.get('forma_pago')
+        moneda = request.POST.get('moneda')
+        tc = request.POST.get('tipo_cambio', '1.000')
+        fecha_input = request.POST.get('fecha')
+
+        if not fecha_input:
+            fecha_final = datetime.date.today().strftime('%Y-%m-%d')
+        else:
+            fecha_final = fecha_input
+        
+        # 2. Lógica de cuenta destino (Caja/Banco)
+        cuenta_raw = request.POST.get('cuenta_destino_id') 
+        caja_id = None
+        banco_id = None
+
+        if cuenta_raw and "_" in cuenta_raw:
+            partes = cuenta_raw.split('_')
+            if partes[0] == 'caja':
+                caja_id = partes[1]
+            elif partes[0] == 'banco':
+                banco_id = partes[1]
+
+        # 3. Lógica de items y montos
         prod_ids = request.POST.getlist('prod_id[]')
         descs = request.POST.getlist('desc[]')
-        cantidades = request.POST.getlist('cant[]')
-        precios = request.POST.getlist('prec[]')
-
+        cants = request.POST.getlist('cant[]')
+        precs = request.POST.getlist('prec[]')
         items_preview = []
         total_acumulado = decimal.Decimal('0.00')
 
         for i in range(len(descs)):
-            c = decimal.Decimal(cantidades[i] or 0)
-            p = decimal.Decimal(precios[i] or 0)
-            sub = c * p
-            total_acumulado += sub
-            items_preview.append({
-                'prod_id': prod_ids[i],
-                'descripcion': descs[i],
-                'cantidad': float(c),
-                'precio': float(p),
-                'subtotal': float(sub)
+            try:
+                c = decimal.Decimal(cants[i] or 0)
+                p = decimal.Decimal(precs[i] or 0)
+                sub = c * p
+                total_acumulado += sub
+                items_preview.append({
+                    'prod_id': prod_ids[i] if i < len(prod_ids) and prod_ids[i] else None,
+                    'descripcion': descs[i],
+                    'cantidad': float(c),
+                    'precio': float(p),
+                    'subtotal': float(sub)
+                })
+            except (decimal.InvalidOperation, ValueError):
+                continue
+
+        # --- VALIDACIÓN: EL CAJERO ESTRICTO ---
+        # Si es contado y no eligió a dónde va el dinero, lo rebotamos
+        if forma_pago == 'contado' and not caja_id and not banco_id:
+            productos = Producto.objects.filter(empresa=empresa)
+            cajas = Caja.objects.filter(empresa=empresa)
+            bancos = Cuenta_Bancaria.objects.filter(empresa=empresa)
+            return render(request, 'core/venta_manual_form.html', {
+                'productos': productos, 'cajas': cajas, 'bancos': bancos,
+                'error': "¡ATENCIÓN! Si la venta es al contado, debe seleccionar una Caja o Banco de destino.",
+                'c': request.POST,
+                'items_error': items_preview # <--- PASAMOS LA LISTA LIMPIA AQUÍ
             })
 
-        # 2. LÓGICA DE IGV SEGÚN TU ELECCIÓN
+        # 4. Impuestos automáticos según el modo (Para el Dashboard)
         if modo == 'oficial':
             subtotal_fin = total_acumulado / decimal.Decimal('1.18')
             igv_fin = total_acumulado - subtotal_fin
@@ -1664,17 +1725,19 @@ def registrar_venta_manual(request):
             subtotal_fin = total_acumulado
             igv_fin = decimal.Decimal('0.00')
 
-        # 3. GUARDAMOS EN SESIÓN PARA EL PREVIEW
+        # 5. Guardamos todo en la sesión
         request.session['temp_venta_manual'] = {
             'ruc_dni': request.POST.get('ruc_dni'),
             'razon_social': request.POST.get('razon_social'),
+            'direccion_cliente': request.POST.get('direccion_cliente'),
             'serie_numero': request.POST.get('serie_numero'),
-            'fecha': request.POST.get('fecha'),
-            'moneda': request.POST.get('moneda'),
-            'tc': request.POST.get('tipo_cambio', '1.000'),
+            'fecha': fecha_final,
+            'moneda': moneda,
+            'tc': tc,
             'modo': modo,
-            'forma_pago': request.POST.get('forma_pago'),
-            'banco_id': request.POST.get('banco_id'),
+            'forma_pago': forma_pago,
+            'caja_id': caja_id, 
+            'banco_id': banco_id,
             'subtotal': float(subtotal_fin),
             'igv': float(igv_fin),
             'total': float(total_acumulado),
@@ -1682,11 +1745,22 @@ def registrar_venta_manual(request):
         }
         return redirect('preview_venta_manual')
 
-    # Al entrar (GET)
-    productos = Producto.objects.filter(empresa=empresa).order_by('nombre_interno')
+    # --- LÓGICA GET (Aquí es donde se recuperan los datos al darle "Corregir") ---
+    datos_recuperados = request.session.get('temp_venta_manual')
+    
+    productos = Producto.objects.filter(empresa=empresa)
+    for p in productos: 
+        p.precio_limpio = "{:.2f}".format(p.precio_venta_referencial or 0)
+        
+    cajas = Caja.objects.filter(empresa=empresa)
     bancos = Cuenta_Bancaria.objects.filter(empresa=empresa)
+    
     return render(request, 'core/venta_manual_form.html', {
-        'productos': productos, 'bancos': bancos, 'hoy': datetime.date.today()
+        'productos': productos, 
+        'cajas': cajas, 
+        'bancos': bancos, 
+        'hoy': datetime.date.today(),
+        'c': datos_recuperados # Esto es la clave para que el HTML se auto-rellene
     })
 
 @login_required
@@ -1700,26 +1774,32 @@ def preview_venta_manual(request):
 @login_required
 @transaction.atomic
 def guardar_venta_manual_final(request):
+    # 1. Recuperar datos de la sesión
     datos = request.session.get('temp_venta_manual')
-    if not datos or request.method != 'POST': return redirect('registrar_venta_manual')
+    
+    # Seguridad: Si no hay datos o no es POST, regresamos
+    if not datos or request.method != 'POST': 
+        return redirect('registrar_venta_manual')
     
     empresa = get_object_or_404(Empresa, id=request.session['empresa_id'])
     
-    # 1. Crear Cliente
+    # --- CORRECCIÓN DE FECHA (Evita el IntegrityError) ---
+    # Si 'fecha' no existe en la sesión, usamos la fecha de hoy
+    fecha_final = datos.get('fecha')
+    if not fecha_final or fecha_final == "":
+        fecha_final = datetime.date.today()
+    # -----------------------------------------------------
+
+    # 2. Crear o recuperar Cliente
     cliente, _ = Entidad.objects.get_or_create(
-        empresa=empresa, numero_documento=datos['ruc_dni'],
+        empresa=empresa, 
+        numero_documento=datos['ruc_dni'],
         defaults={'nombre_razon_social': datos['razon_social'], 'tipo_entidad': 'Cliente'}
     )
 
-    # 2. Crear Comprobante (Boleta o Recibo)
+    # 3. Crear el Comprobante (Venta)
     tipo_doc = 'Boleta' if datos['modo'] == 'oficial' else 'Recibo'
     
-    # --- CORRECCIÓN DE SEGURIDAD PARA LA FECHA ---
-    fecha_final = datos.get('fecha') # Intentamos jalar la fecha de la sesión
-    if not fecha_final:
-        fecha_final = datetime.date.today() # Si no hay nada, usamos HOY para no dar error
-    # ---------------------------------------------
-
     venta = Comprobante.objects.create(
         empresa=empresa,
         entidad=cliente,
@@ -1727,7 +1807,7 @@ def guardar_venta_manual_final(request):
         operacion='Venta',
         serie='V-MAN',
         numero=datos['serie_numero'],
-        fecha_emision = datos.get('fecha') or datetime.date.today(), # Usamos la fecha segura
+        fecha_emision=fecha_final, # <--- Usamos la fecha validada
         moneda=datos['moneda'],
         tipo_cambio=decimal.Decimal(str(datos['tc'])),
         subtotal=decimal.Decimal(str(datos['subtotal'])),
@@ -1736,44 +1816,69 @@ def guardar_venta_manual_final(request):
         estado_sunat='ACEPTADO' if datos['modo'] == 'oficial' else 'INTERNO'
     )
 
-    # 3. Items y Stock
+    # 4. Procesar Items y descontar stock
     for item in datos['items']:
-        producto = get_object_or_404(Producto, id=item['prod_id'], empresa=empresa)
+        # --- AQUÍ EMPIEZA EL BLOQUE QUE ME PREGUNTASTE ---
+        producto = None
+        
+        # PLAN A: Buscar por ID (si se seleccionó del buscador)
+        if item.get('prod_id'):
+            producto = Producto.objects.filter(id=item['prod_id'], empresa=empresa).first()
+        
+        # PLAN B: Si no hay ID, buscar por nombre exacto (el salvavidas)
+        if not producto:
+            producto = Producto.objects.filter(
+                nombre_interno__iexact=item['descripcion'], 
+                empresa=empresa
+            ).first()
+
         ComprobanteDetalle.objects.create(
-            comprobante=venta, producto=producto,
-            cantidad=item['cantidad'], precio_unitario=item['precio'],
+            comprobante=venta,
+            producto=producto,
+            cantidad=item['cantidad'],
+            precio_unitario=item['precio'],
             subtotal_linea=item['subtotal']
         )
-        producto.stock_actual -= decimal.Decimal(str(item['cantidad']))
-        producto.save()
+        # Descontar stock real
+        if producto:
+            producto.stock_actual -= decimal.Decimal(str(item['cantidad']))
+            producto.save()
 
-    # 4. Lógica de Dinero
+    # 5. Crear Deuda y manejar el Pago
     cuenta = CuentaEstado.objects.create(
-        comprobante=venta, monto_total=datos['total'],
-        saldo_pendiente=datos['total'], fecha_vencimiento=datetime.date.today()
+        comprobante=venta,
+        monto_total=decimal.Decimal(str(datos['total'])),
+        saldo_pendiente=decimal.Decimal(str(datos['total'])),
+        fecha_vencimiento=datetime.date.today()
     )
 
     if datos['forma_pago'] == 'contado':
-        banco = get_object_or_404(Cuenta_Bancaria, id=datos['banco_id'])
+        c_id = datos.get('caja_id')
+        b_id = datos.get('banco_id')
+
+    # Si hay una caja o un banco seleccionado, creamos el ingreso
+    if c_id or b_id:
         MovimientoFinanciero.objects.create(
-            empresa=empresa, tipo='Ingreso', monto=decimal.Decimal(str(datos['total'])),
-            moneda=datos['moneda'], cuenta_bancaria=banco,
-            referencia=f"Pago Contado {tipo_doc} {datos['serie_numero']}",
-            comprobante=venta
+            empresa=empresa,
+            tipo='Ingreso',
+            monto=decimal.Decimal(str(datos['total'])),
+            moneda=datos['moneda'],
+            referencia=f"Venta Manual: {venta.serie}-{venta.numero}",
+            comprobante=venta,
+            # Forzamos a entero para que el Signal de tu models.py lo detecte
+            caja_id=int(c_id) if c_id else None,
+            cuenta_bancaria_id=int(b_id) if b_id else None
         )
+        # Esto hace que la deuda aparezca como pagada
         cuenta.saldo_pendiente = 0
         cuenta.estado = 'Cancelado'
         cuenta.save()
-        dest = 'dashboard'
-    else:
-        dest = 'configurar_cuotas' # Si es crédito, va a cuotas
 
-    del request.session['temp_venta_manual']
-    
-    if datos['forma_pago'] == 'contado':
-        return redirect(dest)
-    else:
-        return redirect(dest, cuenta_id=cuenta.id)
+    # 6. Limpiar sesión y terminar
+    if 'temp_venta_manual' in request.session:
+        del request.session['temp_venta_manual']
+        
+    return redirect('dashboard')
 
 @login_required
 @transaction.atomic
@@ -1784,9 +1889,7 @@ def pagar_prestamo(request, pk):
     if request.method == 'POST':
         caja_id = request.POST.get('caja_id')
         banco_id = request.POST.get('banco_id')
-        
-        # 1. Registrar el Movimiento Financiero (Egreso de Caja/Banco)
-        # Sumamos capital + intereses porque eso es lo que sale del banco
+
         monto_total_devolucion = prestamo.monto_capital + prestamo.monto_interes
         
         MovimientoFinanciero.objects.create(
@@ -1800,9 +1903,14 @@ def pagar_prestamo(request, pk):
         )
 
         # 2. Marcar el Préstamo como Pagado
+        if prestamo.cuotas.exists():
+            # Si pagas el total, matamos todas las cuotas en cascada
+            monto_total_devolucion = prestamo.monto_capital + prestamo.monto_interes
+            aplicar_pago_en_cascada(monto_total_devolucion, prestamo=prestamo)
+        # ---------------------------------------------------------
+
         prestamo.estado = 'Pagado'
         prestamo.save()
-
         return redirect('lista_prestamos')
 
     cajas = Caja.objects.filter(empresa=empresa, moneda=prestamo.moneda)
@@ -1842,13 +1950,14 @@ def cronograma_vencimientos(request):
         'hoy': hoy
     })
 
+
 @login_required
 @transaction.atomic
 def registrar_pago_cuota(request, cuota_id):
     cuota = get_object_or_404(Cuota, id=cuota_id)
     empresa = Empresa.objects.get(id=request.session['empresa_id'])
     
-    # Determinar moneda y origen para filtrar bancos/cajas
+    # Determinamos moneda y origen
     moneda = cuota.cuenta.comprobante.moneda if cuota.cuenta else cuota.prestamo.moneda
     origen_nombre = cuota.cuenta.comprobante.codigo_factura if cuota.cuenta else f"Préstamo {cuota.prestamo.prestamista}"
 
@@ -1856,36 +1965,46 @@ def registrar_pago_cuota(request, cuota_id):
         caja_id = request.POST.get('caja_id')
         banco_id = request.POST.get('banco_id')
         
-        # 1. Crear el Movimiento Financiero
+        # --- LÓGICA DE SALDO REAL ---
+        # Usamos saldo_cuota porque es lo que realmente falta pagar de esta cuota
+        monto_a_pagar_real = cuota.saldo_cuota 
+
+        # 1. Crear el Movimiento Financiero con el SALDO REAL
         MovimientoFinanciero.objects.create(
             empresa=empresa,
             tipo='Egreso' if (cuota.prestamo or (cuota.cuenta and cuota.cuenta.comprobante.operacion == 'Compra')) else 'Ingreso',
-            monto=cuota.monto,
+            monto=monto_a_pagar_real,
             moneda=moneda,
-            referencia=f"Pago Cuota {cuota.numero_cuota} de {origen_nombre}",
+            referencia=f"Liquidación Cuota {cuota.numero_cuota} de {origen_nombre}",
             caja_id=caja_id if caja_id else None,
             cuenta_bancaria_id=banco_id if banco_id else None
         )
 
-        # 2. Marcar Cuota como Pagada
+        # 2. Actualizar el saldo pendiente del "Padre" (Factura)
+        if cuota.cuenta:
+            cuenta = cuota.cuenta
+            # Restamos solo lo que faltaba de esta cuota a la deuda global
+            cuenta.saldo_pendiente -= monto_a_pagar_real
+            if cuenta.saldo_pendiente <= 0:
+                cuenta.estado = 'Cancelado'
+                cuenta.saldo_pendiente = 0
+            else:
+                cuenta.estado = 'Parcial'
+            cuenta.save()
+
+        # 3. Actualizar el "Padre" (Préstamo)
+        elif cuota.prestamo:
+            prestamo = cuota.prestamo
+            # Si después de pagar esta cuota no quedan más pendientes, el préstamo muere
+            if not prestamo.cuotas.exclude(id=cuota.id).filter(pagada=False).exists():
+                prestamo.estado = 'Pagado'
+                prestamo.save()
+
+        # 4. Marcar Cuota como TOTALMENTE PAGADA
+        cuota.saldo_cuota = 0
         cuota.pagada = True
         cuota.fecha_pago = datetime.date.today()
         cuota.save()
-
-        # 3. Actualizar el saldo pendiente del "Padre" (Factura o Préstamo)
-        if cuota.cuenta:
-            cuenta = cuota.cuenta
-            cuenta.saldo_pendiente -= cuota.monto
-            if cuenta.saldo_pendiente <= 0:
-                cuenta.estado = 'Cancelado'
-            cuenta.save()
-        elif cuota.prestamo:
-            prestamo = cuota.prestamo
-            # Nota: Los préstamos no tienen campo 'saldo_pendiente' en el modelo original, 
-            # pero el estado sí cambia cuando se pagan todas las cuotas.
-            if not prestamo.cuotas.filter(pagada=False).exists():
-                prestamo.estado = 'Pagado'
-                prestamo.save()
 
         return redirect('cronograma_vencimientos')
 
@@ -1896,7 +2015,8 @@ def registrar_pago_cuota(request, cuota_id):
         'cuota': cuota,
         'cajas': cajas,
         'bancos': bancos,
-        'origen': origen_nombre
+        'origen': origen_nombre,
+        'monto_pendiente': cuota.saldo_cuota # Enviamos el saldo real al formulario
     })
 
 @login_required

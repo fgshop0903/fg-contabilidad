@@ -93,90 +93,118 @@
         <div class="col-lg-11">
             <div class="glass-card p-4 p-md-5">
                 
-                <!-- Encabezado POS -->
-                <div class="d-flex align-items-center justify-content-between mb-5 flex-wrap gap-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 56px; height: 56px; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;">
-                            <i class="fa-solid fa-cart-plus fs-3"></i>
-                        </div>
-                        <div>
-                            <h3 class="fw-800 text-dark mb-0" style="letter-spacing: -1.5px;">Venta Directa Inteligente</h3>
-                            <p class="text-muted small mb-0">Gestión de Boletas, Notas y Stock</p>
-                        </div>
-                    </div>
-
-                    <!-- 1. SELECTOR TRIBUTARIO (NUEVO) -->
-                    <div class="p-2 rounded-4 d-flex align-items-center gap-3 border" style="background: rgba(0,0,0,0.02);">
-                        <span class="small fw-bold text-muted ps-2">TIPO DE VENTA:</span>
-                        <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="modo_tributario" id="modo_oficial" value="oficial" checked>
-                            <label class="btn btn-outline-success btn-sm px-3 fw-bold" for="modo_oficial">OFICIAL (IGV)</label>
-
-                            <input type="radio" class="btn-check" name="modo_tributario" id="modo_interno" value="interno">
-                            <label class="btn btn-outline-dark btn-sm px-3 fw-bold" for="modo_interno">INTERNA (SIN IGV)</label>
-                        </div>
-                    </div>
+                <!-- AVISO DE ERROR (Por si falta la caja en ventas al contado) -->
+                {% if error %}
+                <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4 d-flex align-items-center">
+                    <i class="fa-solid fa-triangle-exclamation fs-4 me-3"></i>
+                    <div class="fw-bold">{{ error }}</div>
                 </div>
+                {% endif %}
 
                 <form method="POST">
                     {% csrf_token %}
+
+                    <!-- Encabezado POS -->
+                    <div class="d-flex align-items-center justify-content-between mb-5 flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 56px; height: 56px; background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;">
+                                <i class="fa-solid fa-cart-plus fs-3"></i>
+                            </div>
+                            <div>
+                                <h3 class="fw-800 text-dark mb-0" style="letter-spacing: -1.5px;">Venta Directa Inteligente</h3>
+                                <p class="text-muted small mb-0">Gestión de Boletas, Notas y Stock</p>
+                            </div>
+                        </div>
+
+                        <!-- 1. SELECTOR TRIBUTARIO -->
+                        <div class="p-2 rounded-4 d-flex align-items-center gap-3 border" style="background: rgba(0,0,0,0.02);">
+                            <span class="small fw-bold text-muted ps-2">TIPO DE VENTA:</span>
+                                <div class="btn-group" role="group">
+                                    <!-- El value debe ser "oficial" en minúsculas -->
+                                    <input type="radio" class="btn-check" name="modo_tributario" id="modo_oficial" value="oficial" 
+                                        {% if not c.modo or c.modo == 'oficial' %}checked{% endif %}>
+                                    <label class="btn btn-outline-success btn-sm px-3 fw-bold" for="modo_oficial">OFICIAL (IGV)</label>
+
+                                    <input type="radio" class="btn-check" name="modo_tributario" id="modo_interno" value="interno"
+                                        {% if c.modo == 'interno' %}checked{% endif %}>
+                                    <label class="btn btn-outline-dark btn-sm px-3 fw-bold" for="modo_interno">INTERNA (SIN IGV)</label>
+                                </div>
+                        </div>
+                    </div>
                     
-                    <!-- 2. DATOS DEL CLIENTE -->
+                    <!-- 2. DATOS DEL CLIENTE (CON VALORES RECUPERADOS) -->
                     <div class="section-label">1. Información del Cliente y Documento</div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">DNI / RUC</label>
-                            <input type="text" name="ruc_dni" class="form-control form-control-fintech" placeholder="Documento" required>
+                            <input type="text" name="ruc_dni" value="{{ c.ruc_dni|default:'' }}" class="form-control form-control-fintech" placeholder="Documento" required>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label small fw-bold text-muted">Nombre o Razón Social</label>
-                            <input type="text" name="razon_social" class="form-control form-control-fintech" placeholder="Nombre del cliente" required>
+                            <input type="text" name="razon_social" value="{{ c.razon_social|default:'' }}" class="form-control form-control-fintech" placeholder="Nombre del cliente" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">Dirección (Opcional)</label>
-                            <input type="text" name="direccion_cliente" class="form-control form-control-fintech" placeholder="Para el comprobante">
+                            <input type="text" name="direccion_cliente" value="{{ c.direccion_cliente|default:'' }}" class="form-control form-control-fintech" placeholder="Para el comprobante">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Nro Ticket / Referencia</label>
-                            <input type="text" name="serie_numero" class="form-control form-control-fintech" placeholder="Ej: NV-001" required>
+                            <input type="text" name="serie_numero" value="{{ c.serie_numero|default:'' }}" class="form-control form-control-fintech" placeholder="Ej: NV-001" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Moneda</label>
                             <select name="moneda" class="form-select form-control-fintech">
-                                <option value="PEN">🇵🇪 Soles (PEN)</option>
-                                <option value="USD">💵 Dólares (USD)</option>
+                                <option value="PEN" {% if c.moneda == 'PEN' %}selected{% endif %}>🇵🇪 Soles (PEN)</option>
+                                <option value="USD" {% if c.moneda == 'USD' %}selected{% endif %}>💵 Dólares (USD)</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Tipo de Cambio</label>
-                            <input type="number" step="0.001" name="tipo_cambio" class="form-control form-control-fintech" value="1.000">
+
+                        <div class="col-md-3" id="div_tipo_cambio" style="display: none;"> <!-- Por defecto oculto -->
+                            <label class="form-label small fw-bold text-primary">Tipo de Cambio</label>
+                            <input type="number" step="0.001" name="tipo_cambio" class="form-control form-control-fintech fw-bold border-primary" value="{{ c.tc|default:'3.750' }}">
                         </div>
+
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-muted">Condición de Pago</label>
                             <select name="forma_pago" class="form-select form-control-fintech fw-bold text-success" id="formaPago" onchange="toggleCaja(this.value)">
-                                <option value="contado">🟢 Al Contado</option>
-                                <option value="credito">🟡 A Crédito</option>
+                                <option value="contado" {% if c.forma_pago == 'contado' %}selected{% endif %}>🟢 Al Contado</option>
+                                <option value="credito" {% if c.forma_pago == 'credito' %}selected{% endif %}>🟡 A Crédito</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- 3. TESORERÍA -->
-                    <div id="seccionCaja" class="mb-5">
-                        <label class="small fw-800 text-success text-uppercase mb-3 d-block">
-                            <i class="fa-solid fa-vault me-2"></i>Cuenta de Ingreso
-                        </label>
-                        <div class="row g-3">
+                    <!-- 3. TESORERÍA (CON MEMORIA DE CAJA SELECCIONADA) -->
+                    <div id="seccionCaja" class="alert alert-success border-success" 
+                         style="background: rgba(16, 185, 129, 0.05); display: {% if c.forma_pago == 'credito' %}none{% else %}block{% endif %};">
+                        <label class="fw-bold mb-2"><i class="fa-solid fa-vault me-1"></i> ¿A qué cuenta ingresa el dinero?</label>
+                        <div class="row">
                             <div class="col-md-12">
-                                <select name="banco_id" class="form-select form-control-fintech">
-                                    <option value="">-- Seleccionar Banco o Caja --</option>
-                                    {% for b in bancos %}<option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }}) - Saldo: {{ b.saldo_actual }}</option>{% endfor %}
-                                    {% for c in cajas %}<option value="{{ c.id }}">💵 {{ c.nombre }} ({{ c.moneda }})</option>{% endfor %}
+                                <select name="cuenta_destino_id" class="form-select fw-bold" id="selectCuentaDestino">
+                                    <option value="">-- Seleccionar Destino --</option>
+                                    
+                                    <optgroup label="📦 CAJAS (EFECTIVO)">
+                                        {% for caja in cajas %}
+                                        <option value="caja_{{ caja.id }}" data-moneda="{{ caja.moneda }}"
+                                            {% if c.caja_id|slugify == caja.id|slugify %}selected{% endif %}>
+                                            {{ caja.nombre }} (Saldo: {{ caja.moneda }} {{ caja.saldo_actual|floatformat:2 }})
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+
+                                    <optgroup label="🏦 BANCOS (CUENTAS)">
+                                        {% for banco in bancos %}
+                                        <option value="banco_{{ banco.id }}" data-moneda="{{ banco.moneda }}"
+                                            {% if c.banco_id|slugify == banco.id|slugify %}selected{% endif %}>
+                                            {{ banco.banco }} - {{ banco.moneda }} (Saldo: {{ banco.saldo_actual|floatformat:2 }})
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 4. DETALLE DE PRODUCTOS -->
+                    <!-- 4. DETALLE DE PRODUCTOS (DINÁMICO PARA CORREGIR) -->
                     <div class="section-label">2. Detalle de Ítems</div>
                     <div class="table-responsive">
                         <table class="table table-modern">
@@ -184,33 +212,89 @@
                                 <tr>
                                     <th style="width: 50%;">Producto</th>
                                     <th style="width: 15%; text-align: center;">Cantidad</th>
-                                    <th style="width: 20%; text-align: right;">Precio Unit. Sugerido</th>
+                                    <th style="width: 20%; text-align: right;">Precio Unit.</th>
                                     <th style="width: 10%;"></th>
                                 </tr>
                             </thead>
+                            
                             <tbody id="tbody">
-                                <tr class="item-row">
-                                    <td>
-                                        <select name="prod_id[]" class="form-select select-buscador" required>
-                                            <option value="">-- Buscar Producto --</option>
-                                            {% for p in productos %}
-                                            <!-- PASAMOS EL PRECIO DE VENTA EN EL DATA-PRICE -->
-                                            <option value="{{ p.id }}" data-price="{{ p.precio_venta_referencial|stringformat:'.2f' }}">
-                                                {{ p.nombre_interno }} (Stock: {{ p.stock_actual|floatformat:1 }})
-                                            </option>
-                                            {% endfor %}
-                                        </select>
-                                        <input type="hidden" name="desc[]" class="desc-hidden">
-                                    </td>
-                                    <td><input type="number" step="0.01" name="cant[]" class="form-control form-control-fintech text-center" value="1" required></td>
-                                    <td><input type="number" step="0.01" name="prec[]" class="form-control form-control-fintech text-end fw-bold precio-unitario" placeholder="0.00" required></td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-light text-danger btn-sm border rounded-circle" onclick="eliminarFila(this)" style="width: 32px; height: 32px;">
-                                            <i class="fas fa-trash-can"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                {% if items_error %}
+                                    <!-- 1. Si hubo un error de validación (ej. no eligió caja), mostramos lo que estaba escribiendo -->
+                                    {% for item in items_error %}
+                                        <tr class="item-row">
+                                            <td>
+                                                <select name="prod_id[]" class="form-select select-buscador" required>
+                                                    <option value="">-- Buscar Producto --</option>
+                                                    {% for p in productos %}
+                                                    <option value="{{ p.id }}" data-price="{{ p.precio_venta_referencial|stringformat:'.2f' }}"
+                                                        {% if p.id|slugify == item.prod_id|slugify %}selected{% endif %}>
+                                                        {{ p.nombre_interno }} (Stock: {{ p.stock_actual|floatformat:1 }})
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <input type="hidden" name="desc[]" class="desc-hidden" value="{{ item.descripcion }}">
+                                            </td>
+                                            <td><input type="number" step="0.01" name="cant[]" value="{{ item.cantidad }}" class="form-control form-control-fintech text-center" required></td>
+                                            <td><input type="number" step="0.01" name="prec[]" value="{{ item.precio }}" class="form-control form-control-fintech text-end fw-bold precio-unitario" required></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-light text-danger btn-sm border rounded-circle" onclick="eliminarFila(this)" style="width: 32px; height: 32px;">
+                                                    <i class="fas fa-trash-can"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+
+                                {% elif c.items %}
+                                    <!-- 2. Si venimos de la sesión (Botón CORREGIR) -->
+                                    {% for item in c.items %}
+                                        <tr class="item-row">
+                                            <td>
+                                                <select name="prod_id[]" class="form-select select-buscador" required>
+                                                    <option value="">-- Buscar Producto --</option>
+                                                    {% for p in productos %}
+                                                    <option value="{{ p.id }}" data-price="{{ p.precio_venta_referencial|stringformat:'.2f' }}"
+                                                        {% if p.id|slugify == item.prod_id|slugify %}selected{% endif %}>
+                                                        {{ p.nombre_interno }} (Stock: {{ p.stock_actual|floatformat:1 }})
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <input type="hidden" name="desc[]" class="desc-hidden" value="{{ item.descripcion }}">
+                                            </td>
+                                            <td><input type="number" step="0.01" name="cant[]" value="{{ item.cantidad }}" class="form-control form-control-fintech text-center" required></td>
+                                            <td><input type="number" step="0.01" name="prec[]" value="{{ item.precio }}" class="form-control form-control-fintech text-end fw-bold precio-unitario" required></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-light text-danger btn-sm border rounded-circle" onclick="eliminarFila(this)" style="width: 32px; height: 32px;">
+                                                    <i class="fas fa-trash-can"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+
+                                {% else %}
+                                    <!-- 3. VENTA NUEVA: Fila vacía inicial -->
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="prod_id[]" class="form-select select-buscador" required>
+                                                <option value="">-- Buscar Producto --</option>
+                                                {% for p in productos %}
+                                                <option value="{{ p.id }}" data-price="{{ p.precio_venta_referencial|stringformat:'.2f' }}">
+                                                    {{ p.nombre_interno }} (Stock: {{ p.stock_actual|floatformat:1 }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="hidden" name="desc[]" class="desc-hidden">
+                                        </td>
+                                        <td><input type="number" step="0.01" name="cant[]" value="1" class="form-control form-control-fintech text-center" required></td>
+                                        <td><input type="number" step="0.01" name="prec[]" class="form-control form-control-fintech text-end fw-bold precio-unitario" placeholder="0.00" required></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-light text-danger btn-sm border rounded-circle" onclick="eliminarFila(this)" style="width: 32px; height: 32px;">
+                                                <i class="fas fa-trash-can"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
                             </tbody>
+
                         </table>
                     </div>
                     
@@ -218,7 +302,6 @@
                         <i class="fa-solid fa-plus me-2"></i> Añadir otro producto
                     </button>
 
-                    <!-- ACCIÓN FINAL -->
                     <div class="mt-5 pt-4 border-top text-end">
                         <button type="submit" class="btn btn-success btn-lg px-5 py-3 rounded-3 shadow fw-bold border-0" 
                                 style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
@@ -245,34 +328,90 @@
 
     $(document).ready(function() {
         initSelect2();
+
+        // Control dinámico del Tipo de Cambio: Solo brilla si es USD
+        $('select[name="moneda"]').on('change', function() {
+            const tcInput = $('input[name="tipo_cambio"]');
+            if ($(this).val() === 'USD') {
+                tcInput.parent().find('label').addClass('text-primary');
+                tcInput.addClass('border-primary');
+            } else {
+                tcInput.parent().find('label').removeClass('text-primary');
+                tcInput.removeClass('border-primary');
+                tcInput.val('1.000');
+            }
+        }).trigger('change');
+
+        function gestionarTipoCambio() {
+            const moneda = $('select[name="moneda"]').val();
+            const divTC = $('#div_tipo_cambio');
+
+            if (moneda === 'USD') {
+                divTC.fadeIn(); // Lo muestra con una animación suave
+                $('input[name="tipo_cambio"]').prop('required', true);
+            } else {
+                divTC.fadeOut(); // Lo oculta
+                $('input[name="tipo_cambio"]').prop('required', false).val('1.000');
+            }
+        }
+
+        // Escuchar el cambio de moneda
+        $('select[name="moneda"]').on('change', gestionarTipoCambio);
+
+        // Ejecutar al cargar la página (por si es una corrección y ya estaba en USD)
+        gestionarTipoCambio();
+
     });
 
-    // MAGIA: AUTO-COMPLETAR PRECIO AL SELECCIONAR
+    // AUTO-COMPLETAR PRECIO Y DESCRIPCIÓN
     $(document).on('change', '.select-buscador', function() {
         const option = $(this).find('option:selected');
-        const price = option.data('price'); // Jalamos el precio de venta referencial
-        const text = option.text().split(' (Stock:')[0];
+        const price = option.data('price') || "0.00";
+        const text = option.text().split(' (Stock:')[0].trim();
         
         const row = $(this).closest('tr');
-        row.find('.precio-unitario').val(price); // Ponemos el precio en el input
+        row.find('.precio-unitario').val(price);
         row.find('.desc-hidden').val(text);
     });
 
     function toggleCaja(val) {
-        document.getElementById('seccionCaja').style.display = (val === 'contado') ? 'block' : 'none';
+        const seccion = document.getElementById('seccionCaja');
+        if (val === 'contado') {
+            $(seccion).slideDown(); // Animación más fluida
+        } else {
+            $(seccion).slideUp();
+        }
     }
 
     function agregarFila() {
-        $('.select-buscador').select2('destroy');
-        const fila = $('.item-row:first').clone();
-        fila.find('input').val('');
-        fila.find('input[name="cant[]"]').val('1');
-        $('#tbody').append(fila);
+        const tbody = $('#tbody');
+        const filaOriginal = tbody.find('.item-row:first');
+        
+        // Destruimos select2 antes de clonar para evitar conflicto de eventos
+        filaOriginal.find('.select-buscador').select2('destroy');
+
+        const nuevaFila = filaOriginal.clone();
+
+        // LIMPIEZA PROFUNDA DEL CLON (Importante para que Select2 no falle)
+        nuevaFila.find('.select2-container').remove(); // Borramos el diseño de select2 viejo
+        nuevaFila.find('select').removeClass('select2-hidden-accessible').removeAttr('data-select2-id').val('');
+        nuevaFila.find('input').val('');
+        nuevaFila.find('input[name="cant[]"]').val('1');
+
+        tbody.append(nuevaFila);
+
+        // Reinicializamos Select2 en la fila original y en la nueva
         initSelect2();
     }
 
     function eliminarFila(btn) {
-        if ($('#tbody tr').length > 1) $(btn).closest('tr').remove();
+        if ($('#tbody tr').length > 1) {
+            $(btn).closest('tr').fadeOut(300, function() {
+                $(this).remove();
+            });
+        } else {
+            alert("Debe haber al menos un producto en la venta.");
+        }
     }
 </script>
 {% endblock %}

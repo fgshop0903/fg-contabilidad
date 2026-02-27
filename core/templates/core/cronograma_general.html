@@ -159,11 +159,22 @@
                             {% endif %}
                         </td>
                         
-                        <!-- 4. MONTO -->
+                        <!-- 4. MONTO (Modificado para mostrar Saldo Pendiente) -->
                         <td class="text-end">
-                            <div class="fw-800 text-dark" style="font-size: 1.1rem;">
+                            <!-- Monto Original -->
+                            <div class="text-muted small" style="text-decoration: line-through; font-size: 0.7rem; margin-bottom: -5px;">
                                 {% if c.cuenta.comprobante.moneda == 'USD' or c.prestamo.moneda == 'USD' %}${% else %}S/{% endif %} {{ c.monto|floatformat:2 }}
                             </div>
+                            
+                            <!-- Saldo Real Pendiente -->
+                            <div class="fw-800 {% if c.saldo_cuota < c.monto %}text-primary{% else %}text-dark{% endif %}" style="font-size: 1.1rem;">
+                                {% if c.cuenta.comprobante.moneda == 'USD' or c.prestamo.moneda == 'USD' %}${% else %}S/{% endif %} {{ c.saldo_cuota|floatformat:2 }}
+                            </div>
+
+                            <!-- Etiqueta de Abono Parcial -->
+                            {% if c.saldo_cuota < c.monto and c.saldo_cuota > 0 %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size: 0.6rem;">ABONO PARCIAL</span>
+                            {% endif %}
                         </td>
                         
                         <!-- 5. ESTADO Y ACCIÓN -->

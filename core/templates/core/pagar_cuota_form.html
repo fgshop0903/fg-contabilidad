@@ -90,19 +90,35 @@
                 <!-- Encabezado -->
                 <div class="text-center mb-4">
                     <h5 class="fw-800 text-dark mb-1">Confirmación de Pago</h5>
-                    <p class="text-muted small">Revisión de cuota y selección de origen</p>
+                    <p class="text-muted small">Revisión de saldo pendiente y origen</p>
                 </div>
 
-                <!-- Hero del Monto -->
+                <!-- Hero del Monto (MODIFICADO PARA MOSTRAR SALDO REAL) -->
                 <div class="payment-hero shadow-sm">
                     <div class="installment-badge border">
                         CUOTA N° {{ cuota.numero_cuota }}
                     </div>
-                    <div class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 1px;">Monto a pagar</div>
+                    
+                    {% if cuota.saldo_cuota < cuota.monto %}
+                        <!-- Si hubo un abono parcial previo -->
+                        <div class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; text-decoration: line-through; opacity: 0.6;">
+                            Original: S/ {{ cuota.monto|floatformat:2 }}
+                        </div>
+                        <div class="text-primary small fw-bold text-uppercase mb-1" style="letter-spacing: 1px;">
+                            Saldo Restante a Liquidar
+                        </div>
+                    {% else %}
+                        <div class="text-muted small fw-bold text-uppercase mb-1" style="letter-spacing: 1px;">Monto a pagar</div>
+                    {% endif %}
+
                     <h2 class="amount-large">
-                        <small style="font-size: 1.2rem; vertical-align: middle;">S/</small> 
-                        {{ cuota.monto|floatformat:2 }}
+                        <small style="font-size: 1.2rem; vertical-align: middle;">
+                            {% if cuota.cuenta %}{{ cuota.cuenta.comprobante.moneda }}{% else %}{{ cuota.prestamo.moneda }}{% endif %}
+                        </small> 
+                        <!-- Mostramos el saldo_cuota que pasamos desde la vista -->
+                        {{ monto_pendiente|floatformat:2 }}
                     </h2>
+
                     <div class="mt-3">
                         <span class="badge bg-white text-danger border px-3 py-2 rounded-pill small">
                             <i class="fa-solid fa-calendar-day me-1"></i> Vence: {{ cuota.fecha_vencimiento|date:"d M, Y" }}
@@ -124,7 +140,7 @@
                         <select name="caja_id" class="form-select form-select-fintech mb-3">
                             <option value="">-- No usar efectivo --</option>
                             {% for c in cajas %}
-                            <option value="{{ c.id }}">💵 {{ c.nombre }} (Saldo: S/ {{ c.saldo_actual }})</option>
+                            <option value="{{ c.id }}">💵 {{ c.nombre }} (Saldo: {{ c.moneda }} {{ c.saldo_actual|floatformat:2 }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -134,19 +150,19 @@
                         <select name="banco_id" class="form-select form-select-fintech" required>
                             <option value="">-- Seleccionar Banco --</option>
                             {% for b in bancos %}
-                            <option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }}) - {{ b.numero_cuenta|slice:"-4:" }}</option>
+                            <option value="{{ b.id }}">🏦 {{ b.banco }} ({{ b.moneda }}) - {{ b.numero_cuenta|slice:"-4:" }} (Saldo: {{ b.saldo_actual|floatformat:2 }})</option>
                             {% endfor %}
                         </select>
                     </div>
 
                     <div class="alert alert-info border-0 bg-light p-3 mb-4 rounded-3 d-flex align-items-start gap-2">
-                        <i class="fa-solid fa-circle-info mt-1"></i>
-                        <small class="text-muted">El saldo se descontará automáticamente de la cuenta seleccionada y el estado de la cuota pasará a <strong>PAGADO</strong>.</small>
+                        <i class="fa-solid fa-circle-info mt-1 text-primary"></i>
+                        <small class="text-muted">Se descontarán <strong>{{ monto_pendiente|floatformat:2 }}</strong> de la cuenta seleccionada. La cuota quedará marcada como <strong>PAGADA</strong>.</small>
                     </div>
 
                     <div class="pt-2">
-                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold mb-3">
-                            <i class="fa-solid fa-lock me-2"></i> Procesar Pago Seguro
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 shadow-sm fw-bold mb-3" style="background: linear-gradient(135deg, #1370b6 0%, #035391 100%) !important; border:none;">
+                            <i class="fa-solid fa-lock me-2"></i> Confirmar y Pagar
                         </button>
                         
                         <a href="{% url 'cronograma_vencimientos' %}" class="btn btn-link w-100 text-muted text-decoration-none small fw-bold">
@@ -164,5 +180,4 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
